@@ -1,0 +1,1162 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MicroAir Lab — Микробиологический анализ воздуха</title>
+<meta name="description" content="MicroAir Lab — цифровая платформа микробиологического анализа воздуха в школьных помещениях. Метод Коха, Омелянского, окраска по Граму.">
+<meta name="keywords" content="MicroAir Lab, микробиология, воздух, школа, анализ, Омелянский, Кох, Грам">
+<link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@300;400;600;700;800&family=Golos+Text:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#060b16;--bg2:#0d1526;--bg3:#111e35;--card:#0f1c30;--card2:#152238;
+  --border:rgba(99,178,255,0.1);--border2:rgba(99,178,255,0.2);
+  --accent:#3b9eff;--accent2:#00d4c8;--accent3:#7c5cfc;
+  --danger:#ff4757;--warn:#ffa502;--ok:#2ed573;
+  --text:#e8f4ff;--muted:#6b8cad;--muted2:#4a6a8a;
+  --sidebar-w:260px;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+html,body{height:100%;background:var(--bg);font-family:'Golos Text',sans-serif;color:var(--text);overflow:hidden;}
+::-webkit-scrollbar{width:4px;height:4px;}
+::-webkit-scrollbar-track{background:var(--bg2);}
+::-webkit-scrollbar-thumb{background:var(--muted2);border-radius:2px;}
+
+/* AUTH */
+#authScreen{position:fixed;inset:0;z-index:1000;display:flex;align-items:center;justify-content:center;
+  background:radial-gradient(ellipse 100% 80% at 50% -10%,rgba(59,158,255,0.15) 0%,transparent 60%),
+  radial-gradient(ellipse 60% 60% at 90% 100%,rgba(124,92,252,0.1) 0%,transparent 50%),var(--bg);}
+.auth-grid{position:absolute;inset:0;pointer-events:none;
+  background-image:linear-gradient(rgba(59,158,255,0.04) 1px,transparent 1px),linear-gradient(90deg,rgba(59,158,255,0.04) 1px,transparent 1px);
+  background-size:60px 60px;}
+.auth-orb{position:absolute;border-radius:50%;filter:blur(80px);animation:orbF 8s ease-in-out infinite;}
+.orb1{width:400px;height:400px;background:rgba(59,158,255,0.08);top:-100px;right:-100px;}
+.orb2{width:300px;height:300px;background:rgba(124,92,252,0.08);bottom:-50px;left:-50px;animation-delay:3s;}
+@keyframes orbF{0%,100%{transform:translate(0,0) scale(1);}50%{transform:translate(20px,-20px) scale(1.05);}}
+.auth-box{position:relative;z-index:2;width:100%;max-width:440px;background:var(--card);border:1px solid var(--border2);border-radius:24px;padding:48px 40px;box-shadow:0 40px 80px rgba(0,0,0,0.5);}
+.auth-logo{text-align:center;margin-bottom:32px;}
+.auth-logo .aicon{display:inline-flex;align-items:center;justify-content:center;width:64px;height:64px;border-radius:18px;background:linear-gradient(135deg,var(--accent),var(--accent2));font-size:28px;margin-bottom:14px;box-shadow:0 8px 24px rgba(59,158,255,0.3);}
+.auth-logo h1{font-family:'Unbounded',sans-serif;font-size:20px;font-weight:700;background:linear-gradient(135deg,#fff,var(--accent));-webkit-background-clip:text;-webkit-text-fill-color:transparent;}
+.auth-logo p{color:var(--muted);font-size:13px;margin-top:4px;}
+.auth-tabs{display:flex;gap:4px;background:var(--bg2);border-radius:12px;padding:4px;margin-bottom:24px;}
+.auth-tab{flex:1;text-align:center;padding:10px;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;transition:all .2s;color:var(--muted);}
+.auth-tab.active{background:var(--card2);color:var(--text);box-shadow:0 2px 8px rgba(0,0,0,0.3);}
+.fg{margin-bottom:16px;}
+.fl{display:block;font-size:12px;font-weight:700;color:var(--muted);margin-bottom:7px;letter-spacing:.04em;text-transform:uppercase;}
+.fi{width:100%;padding:12px 16px;background:var(--bg2);border:1px solid var(--border);border-radius:12px;color:var(--text);font-family:'Golos Text',sans-serif;font-size:15px;transition:all .2s;outline:none;}
+.fi:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(59,158,255,0.12);}
+.fi::placeholder{color:var(--muted2);}
+.fi-select{appearance:none;cursor:pointer;}
+.btn-main{width:100%;padding:14px;border:none;cursor:pointer;background:linear-gradient(135deg,var(--accent),#2980d9);color:#fff;font-family:'Golos Text',sans-serif;font-size:15px;font-weight:700;border-radius:12px;transition:all .2s;box-shadow:0 4px 16px rgba(59,158,255,0.3);}
+.btn-main:hover{transform:translateY(-1px);box-shadow:0 8px 24px rgba(59,158,255,0.4);}
+.btn-main:disabled{opacity:0.6;cursor:not-allowed;transform:none;}
+.auth-msg{border-radius:10px;padding:10px 14px;font-size:13px;margin-bottom:14px;display:none;}
+.auth-err{background:rgba(255,71,87,0.12);border:1px solid rgba(255,71,87,0.25);color:var(--danger);}
+.auth-ok{background:rgba(46,213,115,0.12);border:1px solid rgba(46,213,115,0.25);color:var(--ok);}
+.auth-loading{text-align:center;padding:20px;color:var(--muted);font-size:14px;}
+
+/* APP */
+#appShell{display:none;height:100vh;flex-direction:row;}
+#appShell.visible{display:flex;}
+
+/* SIDEBAR */
+.sidebar{width:var(--sidebar-w);flex-shrink:0;background:var(--bg2);border-right:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden;}
+.sb-logo{padding:22px 20px 18px;display:flex;align-items:center;gap:12px;border-bottom:1px solid var(--border);}
+.logo-mark{width:40px;height:40px;border-radius:12px;flex-shrink:0;background:linear-gradient(135deg,var(--accent),var(--accent2));display:flex;align-items:center;justify-content:center;font-size:18px;}
+.lt1{font-family:'Unbounded',sans-serif;font-size:13px;font-weight:700;}
+.lt2{font-size:11px;color:var(--muted);margin-top:1px;}
+.user-pill{margin:12px 12px 4px;padding:10px 14px;background:var(--card);border:1px solid var(--border);border-radius:12px;display:flex;align-items:center;gap:10px;cursor:pointer;transition:.2s;}
+.user-pill:hover{border-color:var(--accent);}
+.ua{width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,var(--accent3),var(--accent));display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:#fff;flex-shrink:0;}
+.un{font-size:12px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.ur{font-size:10px;color:var(--muted);}
+.lang-bar{display:flex;gap:4px;margin:8px 12px;background:var(--bg);border-radius:8px;padding:3px;}
+.lang-btn{flex:1;padding:5px;border:none;border-radius:6px;font-size:11px;font-weight:700;cursor:pointer;transition:.2s;}
+.nsl{font-size:10px;font-weight:700;letter-spacing:.12em;color:var(--muted2);text-transform:uppercase;padding:14px 20px 5px;}
+.ni{display:flex;align-items:center;gap:10px;padding:9px 12px;margin:1px 8px;border-radius:10px;cursor:pointer;font-size:14px;font-weight:500;color:var(--muted);transition:all .15s;}
+.ni:hover{background:var(--card);color:var(--text);}
+.ni.active{background:linear-gradient(135deg,rgba(59,158,255,0.15),rgba(0,212,200,0.08));color:var(--accent);border:1px solid rgba(59,158,255,0.2);}
+.ni-icon{font-size:17px;flex-shrink:0;width:22px;text-align:center;}
+.nb{margin-left:auto;background:var(--accent);color:#fff;font-size:10px;font-weight:700;padding:2px 7px;border-radius:999px;}
+.sb-bottom{margin-top:auto;padding:10px 8px;border-top:1px solid var(--border);}
+.btn-logout{display:flex;align-items:center;gap:10px;width:100%;padding:10px 12px;border:none;background:none;cursor:pointer;border-radius:10px;color:var(--muted);font-family:'Golos Text',sans-serif;font-size:14px;transition:.15s;}
+.btn-logout:hover{background:rgba(255,71,87,0.1);color:var(--danger);}
+
+/* MAIN */
+.main-content{flex:1;overflow:hidden;display:flex;flex-direction:column;}
+.topbar{height:60px;flex-shrink:0;border-bottom:1px solid var(--border);padding:0 24px;display:flex;align-items:center;justify-content:space-between;background:var(--bg2);}
+.tb-title{font-family:'Unbounded',sans-serif;font-size:14px;font-weight:700;}
+.tb-actions{display:flex;gap:8px;}
+.page-body{flex:1;overflow-y:auto;padding:24px;}
+.page{display:none;}
+.page.active{display:block;}
+
+/* CARDS & LAYOUT */
+.stats-row{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:22px;}
+.stat-card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:20px;position:relative;overflow:hidden;}
+.stat-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:var(--gc);}
+.stat-icon{font-size:22px;margin-bottom:10px;}
+.stat-val{font-family:'Unbounded',sans-serif;font-size:26px;font-weight:700;margin-bottom:2px;}
+.stat-label{font-size:12px;color:var(--muted);}
+.sec-title{font-family:'Unbounded',sans-serif;font-size:13px;font-weight:700;margin:20px 0 14px;display:flex;align-items:center;gap:10px;}
+.sec-title::after{content:'';flex:1;height:1px;background:var(--border);}
+.card{background:var(--card);border:1px solid var(--border);border-radius:18px;padding:22px;}
+.btn-sm{padding:8px 16px;border:1px solid var(--border2);border-radius:8px;background:transparent;color:var(--text);cursor:pointer;font-family:'Golos Text',sans-serif;font-size:13px;font-weight:600;transition:.2s;display:inline-flex;align-items:center;gap:6px;}
+.btn-sm:hover{background:var(--card2);border-color:var(--accent);}
+.btn-sm.primary{background:var(--accent);border-color:var(--accent);color:#fff;}
+.btn-sm.primary:hover{background:#2980d9;}
+.btn-sm.danger{background:rgba(255,71,87,0.1);border-color:rgba(255,71,87,0.3);color:var(--danger);}
+
+/* SCHOOLS */
+.schools-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(290px,1fr));gap:14px;}
+.school-card{background:var(--card);border:1px solid var(--border);border-radius:18px;padding:22px;cursor:pointer;transition:.2s;position:relative;overflow:hidden;}
+.school-card:hover{border-color:var(--accent);transform:translateY(-2px);box-shadow:0 8px 24px rgba(59,158,255,0.1);}
+.sc-num{font-family:'Unbounded',sans-serif;font-size:28px;font-weight:800;color:var(--accent);margin-bottom:4px;}
+.sc-name{font-size:15px;font-weight:600;margin-bottom:8px;}
+.sc-meta{font-size:12px;color:var(--muted);line-height:1.7;}
+.sc-tags{display:flex;flex-wrap:wrap;gap:5px;margin-top:10px;}
+.sc-tag{font-size:11px;padding:3px 10px;border-radius:999px;background:rgba(59,158,255,0.1);color:var(--accent);border:1px solid rgba(59,158,255,0.2);}
+.sc-actions{position:absolute;top:14px;right:14px;display:flex;gap:5px;opacity:0;transition:.2s;}
+.school-card:hover .sc-actions{opacity:1;}
+.ibb{width:28px;height:28px;border-radius:7px;border:1px solid var(--border2);background:var(--bg2);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:13px;color:var(--muted);transition:.15s;}
+.ibb:hover{background:var(--card2);color:var(--text);}
+.ibb.del:hover{background:rgba(255,71,87,0.1);color:var(--danger);}
+.add-card{background:var(--bg2);border:2px dashed var(--border2);border-radius:18px;padding:36px 22px;text-align:center;cursor:pointer;transition:.2s;display:flex;flex-direction:column;align-items:center;gap:10px;}
+.add-card:hover{border-color:var(--accent);background:rgba(59,158,255,0.04);}
+
+/* PROFILE */
+.prof-header{background:linear-gradient(135deg,rgba(59,158,255,0.1),rgba(0,212,200,0.06));border:1px solid var(--border2);border-radius:18px;padding:26px;margin-bottom:18px;display:flex;gap:22px;align-items:flex-start;}
+.prof-emb{width:72px;height:72px;border-radius:18px;flex-shrink:0;background:linear-gradient(135deg,var(--accent),var(--accent2));display:flex;align-items:center;justify-content:center;font-family:'Unbounded',sans-serif;font-size:20px;font-weight:800;color:#fff;box-shadow:0 8px 24px rgba(59,158,255,0.3);}
+.pmg{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:14px;}
+.pm{background:var(--bg2);border-radius:10px;padding:11px 13px;}
+.pmk{font-size:10px;font-weight:700;letter-spacing:.1em;color:var(--muted2);text-transform:uppercase;margin-bottom:3px;}
+.pmv{font-size:13px;font-weight:600;}
+.rtable{width:100%;border-collapse:collapse;}
+.rtable th{background:var(--bg2);padding:11px 14px;font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);text-align:left;border-bottom:1px solid var(--border);}
+.rtable td{padding:13px 14px;border-bottom:1px solid rgba(255,255,255,0.04);font-size:14px;}
+.badge{display:inline-flex;padding:3px 9px;border-radius:999px;font-size:11px;font-weight:700;}
+.b-ok{background:rgba(46,213,115,0.12);color:var(--ok);}
+.b-warn{background:rgba(255,165,2,0.12);color:var(--warn);}
+.b-danger{background:rgba(255,71,87,0.12);color:var(--danger);}
+
+/* CALC */
+.calc-layout{display:grid;grid-template-columns:1fr 360px;gap:18px;}
+.formula-disp{background:var(--bg2);border:1px solid var(--border2);border-radius:14px;padding:18px 22px;margin-bottom:22px;text-align:center;}
+.fml-big{font-family:'Unbounded',sans-serif;font-size:16px;font-weight:600;color:var(--accent2);letter-spacing:.05em;margin-bottom:8px;}
+.fml-leg{display:flex;justify-content:center;gap:14px;flex-wrap:wrap;margin-top:10px;}
+.fl-i{font-size:12px;color:var(--muted);}
+.fl-i span{color:var(--accent3);font-weight:600;}
+.calc-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+.result-box{margin-top:18px;background:linear-gradient(135deg,rgba(59,158,255,0.1),rgba(0,212,200,0.07));border:2px solid var(--accent);border-radius:14px;padding:22px;text-align:center;display:none;}
+.res-big{font-family:'Unbounded',sans-serif;font-size:34px;font-weight:800;color:var(--accent);margin-bottom:5px;}
+.res-unit{font-size:13px;color:var(--muted);margin-bottom:12px;}
+.res-verdict{font-size:14px;font-weight:600;padding:7px 18px;border-radius:999px;display:inline-block;}
+.hist-item{background:var(--bg2);border:1px solid var(--border);border-radius:11px;padding:11px 14px;cursor:pointer;transition:.15s;margin-bottom:7px;}
+.hist-item:hover{border-color:var(--accent);}
+.norm-mini{width:100%;border-collapse:collapse;font-size:13px;}
+.norm-mini th{background:var(--bg2);padding:8px 12px;font-size:11px;color:var(--muted);font-weight:600;text-align:left;border-bottom:1px solid var(--border);}
+.norm-mini td{padding:9px 12px;border-bottom:1px solid rgba(255,255,255,0.04);}
+
+/* CHART */
+.mc-row{display:flex;align-items:center;gap:10px;margin-bottom:8px;}
+.mc-label{width:90px;font-size:12px;color:var(--muted);text-align:right;flex-shrink:0;}
+.mc-track{flex:1;height:28px;background:var(--bg2);border-radius:6px;overflow:hidden;position:relative;}
+.mc-fill{height:100%;border-radius:6px;display:flex;align-items:center;padding-left:10px;font-size:12px;font-weight:700;color:#fff;transition:width 1.2s cubic-bezier(.4,0,.2,1);}
+.mc-norm{position:absolute;top:0;bottom:0;width:2px;background:rgba(46,213,115,0.7);}
+
+/* SCIENTISTS */
+.sci-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(310px,1fr));gap:18px;}
+.sci-card{background:var(--card);border:1px solid var(--border);border-radius:18px;overflow:hidden;transition:.2s;}
+.sci-card:hover{border-color:var(--accent);transform:translateY(-2px);}
+.sci-hd{padding:22px 22px 18px;position:relative;overflow:hidden;}
+.sci-av{width:68px;height:68px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:'Unbounded',sans-serif;font-size:24px;font-weight:700;margin-bottom:12px;position:relative;z-index:1;box-shadow:0 4px 16px rgba(0,0,0,0.3);}
+.sci-name{font-family:'Unbounded',sans-serif;font-size:14px;font-weight:700;margin-bottom:3px;position:relative;z-index:1;}
+.sci-years{font-size:11px;color:var(--muted);margin-bottom:7px;position:relative;z-index:1;}
+.sci-spec{font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;position:relative;z-index:1;}
+.sci-body{padding:0 22px 22px;}
+.sci-desc{font-size:13px;color:var(--muted);line-height:1.7;margin-bottom:12px;}
+.sci-cb{background:var(--bg2);border-radius:9px;padding:13px;}
+.sci-ct{font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--muted2);margin-bottom:7px;}
+.sci-ci{display:flex;gap:7px;font-size:12px;margin-bottom:5px;}
+.sci-ci::before{content:'→';color:var(--accent);flex-shrink:0;}
+.sci-q{background:linear-gradient(135deg,rgba(59,158,255,0.06),rgba(0,212,200,0.04));border-left:3px solid var(--accent2);border-radius:0 9px 9px 0;padding:10px 12px;margin-top:10px;font-size:12px;font-style:italic;color:var(--muted);line-height:1.6;}
+.sci-bg{position:absolute;right:-15px;top:-15px;font-size:90px;opacity:.06;z-index:0;}
+
+/* MODAL */
+.modal-overlay{position:fixed;inset:0;z-index:500;background:rgba(0,0,0,0.7);backdrop-filter:blur(4px);display:none;align-items:center;justify-content:center;padding:20px;}
+.modal-overlay.open{display:flex;}
+.modal-box{background:var(--card);border:1px solid var(--border2);border-radius:18px;width:100%;max-width:540px;max-height:90vh;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 40px 80px rgba(0,0,0,0.6);}
+.modal-hd{padding:22px 26px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;}
+.modal-title{font-family:'Unbounded',sans-serif;font-size:14px;font-weight:700;}
+.modal-x{width:30px;height:30px;border-radius:7px;border:1px solid var(--border);background:none;cursor:pointer;color:var(--muted);font-size:16px;display:flex;align-items:center;justify-content:center;transition:.15s;}
+.modal-x:hover{background:var(--bg2);color:var(--text);}
+.modal-body{padding:22px 26px;overflow-y:auto;flex:1;}
+.modal-ft{padding:16px 26px;border-top:1px solid var(--border);display:flex;gap:9px;justify-content:flex-end;}
+
+/* TOAST */
+.toast-wrap{position:fixed;bottom:20px;right:20px;z-index:999;display:flex;flex-direction:column-reverse;gap:7px;pointer-events:none;}
+.toast{background:var(--card2);border:1px solid var(--border2);border-radius:11px;padding:11px 16px;font-size:14px;font-weight:500;box-shadow:0 8px 24px rgba(0,0,0,0.4);animation:tIn .3s ease;pointer-events:auto;display:flex;align-items:center;gap:9px;}
+.toast.success{border-color:rgba(46,213,115,0.3);background:rgba(46,213,115,0.1);}
+.toast.error{border-color:rgba(255,71,87,0.3);background:rgba(255,71,87,0.1);}
+.toast.info{border-color:rgba(59,158,255,0.3);background:rgba(59,158,255,0.1);}
+@keyframes tIn{from{transform:translateX(100%);opacity:0;}to{transform:none;opacity:1;}}
+
+/* MOBILE */
+#mobileScreen{display:none;position:fixed;inset:0;z-index:2000;background:var(--bg);flex-direction:column;align-items:center;justify-content:center;padding:32px;text-align:center;}
+
+/* MISC */
+.empty{text-align:center;padding:50px 20px;color:var(--muted);}
+.empty .ei{font-size:44px;margin-bottom:12px;}
+.chip{display:inline-flex;align-items:center;gap:5px;padding:4px 12px;border-radius:999px;font-size:12px;font-weight:600;}
+.progress-bar{position:fixed;top:0;left:0;height:3px;background:linear-gradient(90deg,var(--accent),var(--accent2));transition:width .4s;z-index:200;box-shadow:0 0 8px var(--accent);}
+.loading-overlay{position:fixed;inset:0;z-index:900;background:rgba(6,11,22,0.85);display:none;align-items:center;justify-content:center;flex-direction:column;gap:14px;}
+.loading-overlay.show{display:flex;}
+.spinner{width:40px;height:40px;border:3px solid var(--border2);border-top-color:var(--accent);border-radius:50%;animation:spin 0.8s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg);}}
+</style>
+</head>
+<body>
+
+<div class="progress-bar" id="progressBar" style="width:0%"></div>
+<div class="toast-wrap" id="toastWrap"></div>
+
+<div class="loading-overlay" id="loadingOverlay">
+  <div class="spinner"></div>
+  <div style="color:var(--muted);font-size:14px;">Загрузка...</div>
+</div>
+
+<!-- AUTH -->
+<div id="authScreen">
+  <div class="auth-grid"></div>
+  <div class="auth-orb orb1"></div>
+  <div class="auth-orb orb2"></div>
+  <div class="auth-box">
+    <div class="auth-logo">
+      <div class="aicon">🧫</div>
+      <h1>MicroAir Lab</h1>
+      <p>Система микробиологического анализа воздуха</p>
+    </div>
+    <div class="auth-tabs">
+      <div class="auth-tab active" onclick="switchTab('login')">Войти</div>
+      <div class="auth-tab" onclick="switchTab('register')">Регистрация</div>
+    </div>
+    <div id="authErr" class="auth-msg auth-err"></div>
+    <div id="authOk" class="auth-msg auth-ok"></div>
+
+    <div id="loginForm">
+      <div class="fg"><label class="fl">Email</label><input class="fi" type="email" id="lEmail" placeholder="your@email.com"></div>
+      <div class="fg"><label class="fl">Пароль</label><input class="fi" type="password" id="lPass" placeholder="••••••••" onkeydown="if(event.key==='Enter')doLogin()"></div>
+      <button class="btn-main" id="loginBtn" onclick="doLogin()">Войти в систему →</button>
+    </div>
+
+    <div id="registerForm" style="display:none;">
+      <div class="fg"><label class="fl">Имя и фамилия</label><input class="fi" type="text" id="rName" placeholder="Иванов Иван"></div>
+      <div class="fg"><label class="fl">Email</label><input class="fi" type="email" id="rEmail" placeholder="your@email.com"></div>
+      <div class="fg">
+        <label class="fl">Роль</label>
+        <select class="fi fi-select" id="rRole">
+          <option value="student">Ученик / Студент</option>
+          <option value="teacher">Педагог</option>
+          <option value="researcher">Исследователь</option>
+        </select>
+      </div>
+      <div class="fg"><label class="fl">Пароль (мин. 6 символов)</label><input class="fi" type="password" id="rPass" placeholder="••••••••"></div>
+      <button class="btn-main" id="regBtn" onclick="doRegister()">Создать аккаунт →</button>
+    </div>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="appShell">
+  <aside class="sidebar">
+    <div class="sb-logo">
+      <div class="logo-mark">🧫</div>
+      <div><div class="lt1">MicroAir Lab</div><div class="lt2">v3.0 Firebase</div></div>
+    </div>
+    <div class="user-pill" onclick="showPage('account')">
+      <div class="ua" id="sbAvatar">?</div>
+      <div style="flex:1;min-width:0;">
+        <div class="un" id="sbName">—</div>
+        <div class="ur" id="sbRole">—</div>
+      </div>
+    </div>
+    <div class="lang-bar">
+      <button class="lang-btn" id="lbRU" onclick="setLang('ru')" style="background:var(--accent);color:#fff;">RU</button>
+      <button class="lang-btn" id="lbEN" onclick="setLang('en')" style="background:none;color:var(--muted);">EN</button>
+    </div>
+
+    <div class="nsl">Главное</div>
+    <div class="ni active" data-page="dashboard" onclick="showPage('dashboard')"><span class="ni-icon">📊</span>Дашборд</div>
+    <div class="ni" data-page="schools" onclick="showPage('schools')"><span class="ni-icon">🏫</span>Школы<span class="nb" id="schoolsBadge">0</span></div>
+    <div class="ni" data-page="profile" onclick="showPage('profile')"><span class="ni-icon">📋</span>Профиль школы</div>
+
+    <div class="nsl">Анализ</div>
+    <div class="ni" data-page="calculator" onclick="showPage('calculator')"><span class="ni-icon">🔬</span>Калькулятор</div>
+    <div class="ni" data-page="history" onclick="showPage('history')"><span class="ni-icon">📈</span>История</div>
+
+    <div class="nsl">Методы</div>
+    <div class="ni" data-page="koch" onclick="showPage('koch')"><span class="ni-icon">🧫</span>Метод Коха</div>
+    <div class="ni" data-page="gram" onclick="showPage('gram')"><span class="ni-icon">🎨</span>Окраска по Граму</div>
+
+    <div class="nsl">Справка</div>
+    <div class="ni" data-page="scientists" onclick="showPage('scientists')"><span class="ni-icon">🧬</span>Учёные</div>
+    <div class="ni" data-page="creator" onclick="showPage('creator')"><span class="ni-icon">⭐</span>Создатель</div>
+
+    <div id="ownerNav" style="display:none;">
+      <div class="nsl" style="color:var(--warn);">⚡ OWNER</div>
+      <div class="ni" data-page="ownerpanel" onclick="showPage('ownerpanel')" style="border:1px solid rgba(255,165,2,0.2);background:rgba(255,165,2,0.05);"><span class="ni-icon">🛡</span>Панель владельца</div>
+    </div>
+
+    <div class="sb-bottom">
+      <div class="ni" data-page="account" onclick="showPage('account')" style="margin-bottom:4px;"><span class="ni-icon">👤</span>Аккаунт</div>
+      <button class="btn-logout" onclick="doLogout()"><span>🚪</span>Выйти</button>
+    </div>
+  </aside>
+
+  <div class="main-content">
+    <header class="topbar">
+      <div class="tb-title" id="tbTitle">Дашборд</div>
+      <div class="tb-actions" id="tbActions"></div>
+    </header>
+    <div class="page-body" id="pageBody">
+
+      <!-- DASHBOARD -->
+      <div class="page active" id="page-dashboard">
+        <div class="stats-row">
+          <div class="stat-card" style="--gc:linear-gradient(90deg,var(--accent),var(--accent2))"><div class="stat-icon">🏫</div><div class="stat-val" id="ds1">0</div><div class="stat-label">Школ в базе</div></div>
+          <div class="stat-card" style="--gc:linear-gradient(90deg,#7c5cfc,#b066ff)"><div class="stat-icon">🔬</div><div class="stat-val" id="ds2">0</div><div class="stat-label">Расчётов</div></div>
+          <div class="stat-card" style="--gc:linear-gradient(90deg,var(--warn),#ff6b35)"><div class="stat-icon">⚠️</div><div class="stat-val" id="ds3">—</div><div class="stat-label">Макс. загрязнение</div></div>
+          <div class="stat-card" style="--gc:linear-gradient(90deg,var(--ok),#00b894)"><div class="stat-icon">👥</div><div class="stat-val" id="ds4">—</div><div class="stat-label">Участников</div></div>
+        </div>
+        <div class="sec-title">Данные Школы № 210</div>
+        <div class="card">
+          <div id="dashChart">
+            <div class="mc-row"><div class="mc-label">Класс</div><div class="mc-track"><div class="mc-fill" id="dc1" style="width:0%;background:linear-gradient(90deg,#dc2626,#991b1b);">16 220</div><div class="mc-norm" style="left:43%"></div></div></div>
+            <div class="mc-row"><div class="mc-label">Столовая</div><div class="mc-track"><div class="mc-fill" id="dc2" style="width:0%;background:linear-gradient(90deg,#ef4444,#dc2626);">13 499</div><div class="mc-norm" style="left:43%"></div></div></div>
+            <div class="mc-row"><div class="mc-label">Спортзал</div><div class="mc-track"><div class="mc-fill" id="dc3" style="width:0%;background:linear-gradient(90deg,#f59e0b,#ef4444);">9 918</div><div class="mc-norm" style="left:43%"></div></div></div>
+            <div class="mc-row"><div class="mc-label">Библиотека</div><div class="mc-track"><div class="mc-fill" id="dc4" style="width:0%;background:linear-gradient(90deg,#10b981,#06b6d4);">7 253</div><div class="mc-norm" style="left:43%"></div></div></div>
+          </div>
+          <div style="margin-top:10px;font-size:12px;color:var(--muted);display:flex;align-items:center;gap:6px;"><div style="width:12px;height:2px;background:var(--ok);display:inline-block;border-radius:1px;"></div>Зелёная линия = норма 7 000 / м³</div>
+        </div>
+        <div class="sec-title">Последние расчёты</div>
+        <div id="recentCalcs" class="card" style="color:var(--muted);font-size:14px;">Расчёты появятся здесь</div>
+      </div>
+
+      <!-- SCHOOLS -->
+      <div class="page" id="page-schools">
+        <div class="schools-grid" id="schoolsGrid"></div>
+      </div>
+
+      <!-- PROFILE -->
+      <div class="page" id="page-profile">
+        <div id="profileContent"><div class="empty"><div class="ei">🏫</div><p>Выберите школу из списка</p></div></div>
+      </div>
+
+      <!-- CALCULATOR -->
+      <div class="page" id="page-calculator">
+        <div class="calc-layout">
+          <div>
+            <div class="card">
+              <div class="formula-disp">
+                <div style="font-size:11px;color:var(--muted2);letter-spacing:.1em;text-transform:uppercase;margin-bottom:7px;">Формула Омелянского</div>
+                <div class="fml-big">Х = а × 100 × 5 × 100 / (S × T)</div>
+                <div class="fml-leg">
+                  <div class="fl-i"><span>а</span> — колонии</div>
+                  <div class="fl-i"><span>S</span> — площадь, см²</div>
+                  <div class="fl-i"><span>T</span> — время, мин</div>
+                  <div class="fl-i"><span>Х</span> — микроорг./м³</div>
+                </div>
+              </div>
+              <div class="fg"><label class="fl">Школа</label><select class="fi fi-select" id="calcSchool"></select></div>
+              <div class="fg"><label class="fl">Помещение</label><input class="fi" id="calcRoom" placeholder="Учебный кабинет, спортзал..."></div>
+              <div class="calc-grid">
+                <div class="fg"><label class="fl">🧫 Чашка 1 — колоний</label><input class="fi" type="number" id="c1" min="0" oninput="upAvg()"></div>
+                <div class="fg"><label class="fl">🧫 Чашка 2 — колоний</label><input class="fi" type="number" id="c2" min="0" oninput="upAvg()"></div>
+                <div class="fg"><label class="fl">🧫 Чашка 3 — колоний</label><input class="fi" type="number" id="c3" min="0" oninput="upAvg()"></div>
+                <div class="fg"><label class="fl">📐 Площадь S (см²)</label><input class="fi" type="number" id="sA" value="78.5"></div>
+                <div class="fg"><label class="fl">⏱ Время T (мин)</label><input class="fi" type="number" id="tT" value="5"></div>
+                <div class="fg"><label class="fl">∑ Среднее а</label><input class="fi" id="avgD" readonly style="background:rgba(59,158,255,0.06);border-color:rgba(59,158,255,0.2);"></div>
+              </div>
+              <div style="display:flex;gap:9px;"><button class="btn-sm primary" style="flex:1;padding:12px;" onclick="doCalc()">⚡ Рассчитать</button><button class="btn-sm" onclick="clearCalc()">Сбросить</button></div>
+              <div class="result-box" id="resultBox">
+                <div style="font-size:11px;color:var(--muted);letter-spacing:.1em;text-transform:uppercase;margin-bottom:5px;">Результат</div>
+                <div class="res-big" id="resVal">0</div>
+                <div class="res-unit">микроорганизмов / м³</div>
+                <div class="res-verdict" id="resVerdict"></div>
+                <div style="margin-top:12px;font-size:13px;color:var(--muted);" id="resComp"></div>
+                <button class="btn-sm primary" style="margin-top:14px;" onclick="saveCalc()">💾 Сохранить в историю</button>
+              </div>
+            </div>
+          </div>
+          <div>
+            <div class="card" style="margin-bottom:14px;">
+              <div class="sec-title" style="font-size:12px;margin-top:0;">Нормы</div>
+              <table class="norm-mini">
+                <tr><th>Оценка</th><th>Лето</th><th>Зима</th></tr>
+                <tr><td>✅ Чистый</td><td style="color:var(--ok)">≤ 1500</td><td style="color:var(--ok)">≤ 4500</td></tr>
+                <tr><td>⚠️ Умеренный</td><td style="color:var(--warn)">≤ 2500</td><td style="color:var(--warn)">≤ 7000</td></tr>
+                <tr><td>❌ Загрязнён</td><td style="color:var(--danger)">> 2500</td><td style="color:var(--danger)">> 7000</td></tr>
+              </table>
+            </div>
+            <div class="card">
+              <div class="sec-title" style="font-size:12px;margin-top:0;">История расчётов</div>
+              <div id="calcHist"><div style="color:var(--muted);font-size:13px;text-align:center;padding:16px;">Пусто</div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- HISTORY -->
+      <div class="page" id="page-history"><div id="histFull"></div></div>
+
+      <!-- KOCH -->
+      <div class="page" id="page-koch">
+        <div style="max-width:840px;">
+          <div style="background:linear-gradient(135deg,rgba(16,185,129,0.08),rgba(6,182,212,0.05));border:1px solid rgba(16,185,129,0.2);border-radius:18px;padding:26px;margin-bottom:18px;display:flex;gap:18px;align-items:flex-start;">
+            <div style="font-size:44px;flex-shrink:0;">🧫</div>
+            <div><div style="font-family:'Unbounded',sans-serif;font-size:18px;font-weight:700;margin-bottom:5px;">Метод Коха (Седиментационный)</div><div style="color:var(--muted);font-size:14px;line-height:1.7;">Самый старый метод анализа воздуха. Разработан Робертом Кохом. Основан на естественном оседании микроорганизмов на питательную среду.</div></div>
+          </div>
+          <div class="sec-title" style="margin-top:0;">Пошаговый протокол</div>
+          <div style="display:flex;flex-direction:column;gap:11px;margin-bottom:20px;">
+            ${[['1','🧪','Подготовка','Стерильные чашки Петри с МПА. Подписать: помещение, номер, дата.'],['2','📍','Расстановка','На высоте 1–1,5 м. Минимум 3 повторности на каждое помещение.'],['3','⏱','Экспозиция 5 мин','Снять крышки. Не двигаться рядом — вызовет завихрения воздуха.'],['4','🔒','Закрытие','Закрыть и обернуть скотчем. В термостат не позднее 1–2 ч.'],['5','🌡','Инкубация','37°C — 24 ч. Затем комнатная t° ещё 24 ч.'],['6','🔢','Подсчёт','Подсчитать все колонии. Среднее из трёх = значение «а» для формулы.']].map(([n,ic,t,d])=>`<div style="background:var(--card);border:1px solid var(--border);border-radius:14px;padding:15px 18px;display:flex;gap:14px;align-items:flex-start;"><div style="width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,var(--ok),var(--accent2));display:flex;align-items:center;justify-content:center;font-family:'Unbounded',sans-serif;font-weight:800;font-size:13px;color:#fff;flex-shrink:0;">${n}</div><div><div style="font-weight:700;font-size:14px;margin-bottom:3px;">${ic} ${t}</div><div style="font-size:13px;color:var(--muted);line-height:1.6;">${d}</div></div></div>`).join('')}
+          </div>
+          <button class="btn-sm primary" style="padding:11px 22px;" onclick="showPage('calculator')">→ Перейти к Калькулятору</button>
+        </div>
+      </div>
+
+      <!-- GRAM -->
+      <div class="page" id="page-gram">
+        <div style="max-width:840px;">
+          <div style="background:linear-gradient(135deg,rgba(124,92,252,0.08),rgba(59,158,255,0.05));border:1px solid rgba(124,92,252,0.2);border-radius:18px;padding:26px;margin-bottom:18px;display:flex;gap:18px;align-items:flex-start;">
+            <div style="font-size:44px;flex-shrink:0;">🎨</div>
+            <div><div style="font-family:'Unbounded',sans-serif;font-size:18px;font-weight:700;margin-bottom:5px;">Окраска по методу Грама</div><div style="color:var(--muted);font-size:14px;line-height:1.7;">Дифференциальный метод 1884 года. Разделяет бактерии на грамположительные и грамотрицательные по строению клеточной стенки.</div></div>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:20px;">
+            <div style="background:var(--card);border:2px solid rgba(124,92,252,0.3);border-radius:14px;padding:18px;"><div style="font-family:'Unbounded',sans-serif;font-size:12px;font-weight:700;color:var(--accent3);margin-bottom:10px;">🟣 ГРАМПОЛОЖИТЕЛЬНЫЕ</div><div style="font-size:13px;color:var(--muted);line-height:1.7;margin-bottom:8px;">Окрашиваются в <strong style="color:#9b59b6;">фиолетовый</strong>. Толстая стенка удерживает краситель.</div><div style="font-size:12px;color:var(--muted);">Staphylococcus, Bacillus</div><div style="margin-top:9px;background:rgba(124,92,252,0.1);border-radius:7px;padding:7px 11px;font-size:12px;color:var(--accent3);">⚠️ Обнаружены в Школе №210</div></div>
+            <div style="background:var(--card);border:2px solid rgba(239,68,68,0.3);border-radius:14px;padding:18px;"><div style="font-family:'Unbounded',sans-serif;font-size:12px;font-weight:700;color:var(--danger);margin-bottom:10px;">🔴 ГРАМОТРИЦАТЕЛЬНЫЕ</div><div style="font-size:13px;color:var(--muted);line-height:1.7;margin-bottom:8px;">Окрашиваются в <strong style="color:#e74c3c;">розовый</strong>. Тонкая стенка + внешняя мембрана.</div><div style="font-size:12px;color:var(--muted);">E. coli, Pseudomonas</div></div>
+          </div>
+          <div class="sec-title" style="margin-top:0;">Протокол окраски</div>
+          <div style="display:flex;flex-direction:column;gap:9px;">
+            ${[['1','💜','Кристаллвиолет (2–3 мин)','Нанести краситель через фильтровальную бумажку.'],['2','🟤','Раствор Люголя (2 мин)','Фиксирует комплекс краситель–стенка.'],['3','🍺','Спирт 96% (30–60 сек)','Обесцвечивание. Сразу промыть водой.'],['4','🔴','Фуксин (2–3 мин)','Докраска грамотрицательных в розовый.'],['5','🔭','Микроскопия ×100','Масляный объектив. Оценить форму и цвет.']].map(([n,ic,t,d])=>`<div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:13px 16px;display:flex;gap:13px;align-items:flex-start;"><div style="width:28px;height:28px;border-radius:50%;background:linear-gradient(135deg,var(--accent3),var(--accent));display:flex;align-items:center;justify-content:center;font-family:'Unbounded',sans-serif;font-weight:800;font-size:12px;color:#fff;flex-shrink:0;">${n}</div><div><div style="font-weight:700;font-size:13px;margin-bottom:2px;">${ic} ${t}</div><div style="font-size:12px;color:var(--muted);">${d}</div></div></div>`).join('')}
+          </div>
+        </div>
+      </div>
+
+      <!-- SCIENTISTS -->
+      <div class="page" id="page-scientists">
+        <div style="margin-bottom:18px;color:var(--muted);font-size:14px;line-height:1.7;max-width:760px;">Учёные, заложившие фундамент микробиологического анализа воздуха. Их методы применяются в данном исследовании.</div>
+        <div class="sci-grid" id="sciGrid"></div>
+      </div>
+
+      <!-- CREATOR -->
+      <div class="page" id="page-creator">
+        <div style="max-width:800px;">
+          <div style="position:relative;background:linear-gradient(135deg,rgba(59,158,255,0.09),rgba(0,212,200,0.06),rgba(124,92,252,0.08));border:1px solid var(--border2);border-radius:26px;overflow:hidden;padding:44px 38px;margin-bottom:18px;">
+            <div style="position:absolute;width:350px;height:350px;border-radius:50%;background:radial-gradient(circle,rgba(59,158,255,0.07),transparent);top:-130px;right:-80px;pointer-events:none;"></div>
+            <div style="display:flex;gap:30px;align-items:flex-start;position:relative;z-index:1;flex-wrap:wrap;">
+              <div style="flex-shrink:0;">
+                <div style="width:100px;height:100px;border-radius:50%;background:linear-gradient(135deg,#0f2d5c,#1a5fa8,#3b9eff,#00d4c8);display:flex;align-items:center;justify-content:center;font-family:'Unbounded',sans-serif;font-size:30px;font-weight:800;color:#fff;box-shadow:0 12px 40px rgba(59,158,255,0.45),0 0 0 4px rgba(59,158,255,0.15);position:relative;letter-spacing:-2px;">RH<div style="position:absolute;bottom:5px;right:5px;width:18px;height:18px;border-radius:50%;background:var(--ok);border:2px solid var(--bg);display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;">✓</div></div>
+              </div>
+              <div style="flex:1;min-width:260px;">
+                <div style="display:flex;align-items:center;gap:10px;margin-bottom:7px;flex-wrap:wrap;">
+                  <div style="font-family:'Unbounded',sans-serif;font-size:26px;font-weight:800;background:linear-gradient(135deg,#fff 20%,var(--accent) 60%,var(--accent2));-webkit-background-clip:text;-webkit-text-fill-color:transparent;">Rahmanov Hasan</div>
+                  <span style="background:linear-gradient(135deg,rgba(255,165,2,0.2),rgba(255,100,0,0.15));border:1px solid rgba(255,165,2,0.4);color:var(--warn);border-radius:999px;padding:4px 12px;font-size:11px;font-weight:800;letter-spacing:.1em;-webkit-text-fill-color:var(--warn);">⭐ FOUNDER</span>
+                </div>
+                <div style="font-size:14px;color:var(--accent2);font-weight:600;margin-bottom:14px;">Основатель и разработчик · MicroAir Lab · Ташкент, 2026</div>
+                <div style="font-size:14px;color:var(--muted);line-height:1.85;margin-bottom:18px;">Автор исследовательской работы <strong style="color:var(--text);">«Микробиологический анализ воздуха школьных помещений»</strong> и создатель данной цифровой платформы. Провёл полевые эксперименты в четырёх помещениях Школы № 210 г. Ташкента, применив методы Коха, Омелянского и окраску по Граму.</div>
+                <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:9px;margin-bottom:18px;">
+                  <div style="background:rgba(255,255,255,0.04);border:1px solid var(--border);border-radius:11px;padding:12px;"><div style="font-size:9px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--muted2);margin-bottom:3px;">Сфера</div><div style="font-size:12px;font-weight:600;">Микробиология воздуха</div></div>
+                  <div style="background:rgba(255,255,255,0.04);border:1px solid var(--border);border-radius:11px;padding:12px;"><div style="font-size:9px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--muted2);margin-bottom:3px;">Год запуска</div><div style="font-size:12px;font-weight:600;">2026 · Ташкент</div></div>
+                  <div style="background:rgba(255,255,255,0.04);border:1px solid var(--border);border-radius:11px;padding:12px;"><div style="font-size:9px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--muted2);margin-bottom:3px;">Организация</div><div style="font-size:12px;font-weight:600;">РХТУ Менделеева</div></div>
+                </div>
+                <div style="background:rgba(255,255,255,0.03);border-left:3px solid var(--accent2);border-radius:0 10px 10px 0;padding:13px 16px;font-size:13px;font-style:italic;color:var(--muted);line-height:1.7;margin-bottom:15px;">«Мы не можем увидеть бактерии. Но это не значит, что их нет. Знание — первый шаг к действию.»</div>
+                <div style="display:flex;gap:7px;flex-wrap:wrap;">
+                  <span style="background:rgba(59,158,255,0.1);border:1px solid rgba(59,158,255,0.2);color:var(--accent);border-radius:999px;padding:4px 12px;font-size:12px;font-weight:600;">🔬 Исследователь</span>
+                  <span style="background:rgba(0,212,200,0.1);border:1px solid rgba(0,212,200,0.2);color:var(--accent2);border-radius:999px;padding:4px 12px;font-size:12px;font-weight:600;">💻 Разработчик</span>
+                  <span style="background:rgba(124,92,252,0.1);border:1px solid rgba(124,92,252,0.2);color:var(--accent3);border-radius:999px;padding:4px 12px;font-size:12px;font-weight:600;">🏫 Школа №210</span>
+                  <span style="background:rgba(46,213,115,0.1);border:1px solid rgba(46,213,115,0.2);color:var(--ok);border-radius:999px;padding:4px 12px;font-size:12px;font-weight:600;">📍 Ташкент</span>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="card" style="display:flex;gap:13px;align-items:flex-start;">
+            <div style="font-size:20px;flex-shrink:0;">🙏</div>
+            <div><div style="font-weight:700;margin-bottom:5px;">Благодарности</div><div style="font-size:13px;color:var(--muted);line-height:1.8;"><strong style="color:var(--text);">Иванова М.А.</strong> и <strong style="color:var(--text);">Ершова З.А.</strong> — научные руководители (проект «Российский учитель за рубежом»).<br><strong style="color:var(--text);">Филиал РХТУ им. Д.И. Менделеева</strong> — лабораторные помещения и оборудование.</div></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- OWNER PANEL -->
+      <div class="page" id="page-ownerpanel">
+        <div style="max-width:960px;">
+          <div style="background:linear-gradient(135deg,rgba(255,165,2,0.1),rgba(255,100,0,0.07));border:1px solid rgba(255,165,2,0.25);border-radius:18px;padding:22px;margin-bottom:18px;display:flex;gap:14px;align-items:center;">
+            <div style="font-size:34px;">🛡</div>
+            <div><div style="font-family:'Unbounded',sans-serif;font-size:17px;font-weight:700;color:var(--warn);">Owner Control Panel</div><div style="font-size:13px;color:var(--muted);margin-top:3px;">Полный контроль. Firebase Auth — реальные пользователи.</div></div>
+          </div>
+          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:20px;">
+            <div class="card" style="text-align:center;"><div style="font-family:'Unbounded',sans-serif;font-size:26px;font-weight:700;color:var(--accent);" id="op1">—</div><div style="font-size:12px;color:var(--muted);margin-top:4px;">Пользователей</div></div>
+            <div class="card" style="text-align:center;"><div style="font-family:'Unbounded',sans-serif;font-size:26px;font-weight:700;color:var(--accent3);" id="op2">—</div><div style="font-size:12px;color:var(--muted);margin-top:4px;">Школ</div></div>
+            <div class="card" style="text-align:center;"><div style="font-family:'Unbounded',sans-serif;font-size:26px;font-weight:700;color:var(--ok);" id="op3">—</div><div style="font-size:12px;color:var(--muted);margin-top:4px;">Расчётов</div></div>
+          </div>
+          <div class="sec-title">Зарегистрированные пользователи</div>
+          <div class="card"><div id="ownerUsers" style="color:var(--muted);font-size:14px;">Загрузка...</div></div>
+          <div class="sec-title" style="margin-top:20px;">⚠️ Опасная зона</div>
+          <div style="background:rgba(255,71,87,0.05);border:1px solid rgba(255,71,87,0.2);border-radius:14px;padding:18px;display:flex;gap:10px;flex-wrap:wrap;">
+            <button class="btn-sm danger" onclick="ownerDelCalcs()">🗑 Очистить расчёты</button>
+            <button class="btn-sm danger" onclick="ownerResetSchools()">🏫 Сбросить школы</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ACCOUNT -->
+      <div class="page" id="page-account">
+        <div style="max-width:660px;">
+          <div style="background:linear-gradient(135deg,rgba(59,158,255,0.1),rgba(124,92,252,0.08));border:1px solid var(--border2);border-radius:18px;padding:26px;margin-bottom:16px;display:flex;gap:18px;align-items:center;">
+            <div id="accAv" style="width:70px;height:70px;border-radius:50%;background:linear-gradient(135deg,var(--accent3),var(--accent));display:flex;align-items:center;justify-content:center;font-family:'Unbounded',sans-serif;font-size:26px;font-weight:800;color:#fff;flex-shrink:0;box-shadow:0 8px 24px rgba(124,92,252,0.3);">?</div>
+            <div style="flex:1;">
+              <div style="font-family:'Unbounded',sans-serif;font-size:19px;font-weight:700;margin-bottom:4px;" id="accName">—</div>
+              <div style="color:var(--muted);font-size:13px;margin-bottom:6px;" id="accEmail">—</div>
+              <div style="display:flex;gap:7px;flex-wrap:wrap;"><span class="chip" style="background:rgba(59,158,255,0.12);color:var(--accent);border:1px solid rgba(59,158,255,0.2);" id="accRoleChip">—</span></div>
+            </div>
+          </div>
+          <div class="card" style="margin-bottom:14px;">
+            <div class="sec-title" style="margin-top:0;font-size:12px;">✏️ Редактировать профиль</div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:13px;">
+              <div class="fg" style="margin-bottom:0;"><label class="fl">Имя</label><input class="fi" id="accEditName" placeholder="Ваше имя"></div>
+              <div class="fg" style="margin-bottom:0;"><label class="fl">Роль</label><select class="fi fi-select" id="accEditRole"><option value="student">Ученик</option><option value="teacher">Педагог</option><option value="researcher">Исследователь</option></select></div>
+            </div>
+            <button class="btn-sm primary" style="margin-top:14px;" onclick="saveProfile()">💾 Сохранить</button>
+          </div>
+          <div class="card" style="margin-bottom:14px;">
+            <div class="sec-title" style="margin-top:0;font-size:12px;">📊 Статистика</div>
+            <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;">
+              <div style="background:var(--bg2);border-radius:10px;padding:14px;text-align:center;"><div style="font-family:'Unbounded',sans-serif;font-size:20px;font-weight:700;color:var(--accent);" id="as1">0</div><div style="font-size:11px;color:var(--muted);margin-top:3px;">Школ</div></div>
+              <div style="background:var(--bg2);border-radius:10px;padding:14px;text-align:center;"><div style="font-family:'Unbounded',sans-serif;font-size:20px;font-weight:700;color:var(--accent3);" id="as2">0</div><div style="font-size:11px;color:var(--muted);margin-top:3px;">Расчётов</div></div>
+              <div style="background:var(--bg2);border-radius:10px;padding:14px;text-align:center;"><div style="font-family:'Unbounded',sans-serif;font-size:20px;font-weight:700;color:var(--ok);" id="as3">0</div><div style="font-size:11px;color:var(--muted);margin-top:3px;">Дней</div></div>
+            </div>
+          </div>
+          <div style="background:rgba(255,71,87,0.05);border:1px solid rgba(255,71,87,0.2);border-radius:18px;padding:22px;">
+            <div style="font-family:'Unbounded',sans-serif;font-size:13px;font-weight:700;color:var(--danger);margin-bottom:14px;">⚠️ Опасная зона</div>
+            <div style="display:flex;gap:12px;flex-wrap:wrap;">
+              <div style="flex:1;min-width:220px;"><div style="font-size:14px;font-weight:600;margin-bottom:3px;">Выйти</div><div style="font-size:13px;color:var(--muted);margin-bottom:9px;">Сессия завершится. Данные сохранятся.</div><button class="btn-sm" style="border-color:rgba(255,165,2,0.4);color:var(--warn);" onclick="doLogout()">🚪 Выйти</button></div>
+              <div style="width:1px;background:rgba(255,71,87,0.15);"></div>
+              <div style="flex:1;min-width:220px;"><div style="font-size:14px;font-weight:600;margin-bottom:3px;color:var(--danger);">Удалить аккаунт</div><div style="font-size:13px;color:var(--muted);margin-bottom:9px;">Удалится навсегда из Firebase.</div><button class="btn-sm danger" onclick="deleteAcct()">🗑 Удалить аккаунт</button></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: SCHOOL -->
+<div class="modal-overlay" id="schoolModal">
+  <div class="modal-box">
+    <div class="modal-hd"><div class="modal-title" id="smTitle">Добавить школу</div><button class="modal-x" onclick="closeModal('schoolModal')">✕</button></div>
+    <div class="modal-body">
+      <div class="fg"><label class="fl">Номер школы</label><input class="fi" id="mNum" placeholder="210"></div>
+      <div class="fg"><label class="fl">Полное название</label><input class="fi" id="mName" placeholder="Общеобразовательная школа № 210"></div>
+      <div class="fg"><label class="fl">Город / Район</label><input class="fi" id="mCity" placeholder="Ташкент, Юнусабадский район"></div>
+      <div class="fg"><label class="fl">Адрес</label><input class="fi" id="mAddr" placeholder="ул. Амира Темура, 1"></div>
+      <div class="fg"><label class="fl">Директор</label><input class="fi" id="mDir" placeholder="Иванов Иван Иванович"></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:13px;">
+        <div class="fg"><label class="fl">Учеников</label><input class="fi" type="number" id="mStudents" placeholder="850"></div>
+        <div class="fg"><label class="fl">Год постройки</label><input class="fi" type="number" id="mYear" placeholder="1985"></div>
+      </div>
+      <div class="fg"><label class="fl">Тип</label><select class="fi fi-select" id="mType"><option>Общеобразовательная школа</option><option>Гимназия</option><option>Лицей</option><option>Специализированная школа</option></select></div>
+      <div class="fg"><label class="fl">Вентиляция</label><select class="fi fi-select" id="mVent"><option value="natural">Естественная</option><option value="mechanic">Механическая</option><option value="combined">Комбинированная</option><option value="none">Отсутствует</option></select></div>
+      <div class="fg"><label class="fl">Примечания</label><input class="fi" id="mNotes" placeholder="..."></div>
+    </div>
+    <div class="modal-ft"><button class="btn-sm" onclick="closeModal('schoolModal')">Отмена</button><button class="btn-sm primary" onclick="saveSchool()">💾 Сохранить</button></div>
+  </div>
+</div>
+
+<!-- MOBILE SCREEN -->
+<div id="mobileScreen" style="display:none;position:fixed;inset:0;z-index:2000;background:var(--bg);flex-direction:column;align-items:center;justify-content:center;padding:32px;text-align:center;">
+  <div style="font-size:52px;margin-bottom:18px;">📱</div>
+  <div style="font-family:'Unbounded',sans-serif;font-size:18px;font-weight:700;margin-bottom:10px;background:linear-gradient(135deg,#fff,var(--accent));-webkit-background-clip:text;-webkit-text-fill-color:transparent;">MicroAir Lab</div>
+  <div style="font-size:14px;color:var(--muted);margin-bottom:20px;line-height:1.7;max-width:300px;">Платформа оптимизирована для ПК. Используйте компьютер.</div>
+  <div class="card" style="max-width:320px;text-align:left;margin-bottom:20px;"><div style="font-size:13px;font-weight:700;margin-bottom:9px;">📌 Доступно с телефона:</div><div style="font-size:13px;color:var(--ok);margin-bottom:5px;">✅ Регистрация</div><div style="font-size:13px;color:var(--muted);">❌ Анализ и панель управления</div></div>
+  <div style="font-size:12px;color:var(--accent);font-weight:600;padding:9px 16px;background:rgba(59,158,255,0.1);border:1px solid rgba(59,158,255,0.2);border-radius:9px;">microair-lab.web.app</div>
+  <button id="ownerBypass" style="display:none;margin-top:14px;padding:9px 18px;border:1px solid var(--warn);background:rgba(255,165,2,0.1);color:var(--warn);border-radius:9px;font-weight:700;cursor:pointer;font-family:'Golos Text',sans-serif;" onclick="mobileBypass()">⚡ Owner: войти</button>
+</div>
+
+<!-- FIREBASE SDK -->
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.12.1/firebase-app.js";
+import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, deleteUser, updateProfile } from "https://www.gstatic.com/firebasejs/12.12.1/firebase-auth.js";
+import { getFirestore, collection, doc, setDoc, getDoc, getDocs, addDoc, deleteDoc, updateDoc, query, orderBy, limit, serverTimestamp, onSnapshot } from "https://www.gstatic.com/firebasejs/12.12.1/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyDmBRInUyHjuGeFhrGOX21NjpaWiC0ztmA",
+  authDomain: "microair-lab.firebaseapp.com",
+  projectId: "microair-lab",
+  storageBucket: "microair-lab.firebasestorage.app",
+  messagingSenderId: "140984558563",
+  appId: "1:140984558563:web:0a62c6ae9a527d1e28b6d6",
+  measurementId: "G-S32XESF9WC"
+};
+
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+
+// OWNER CHECK (obfuscated)
+const _oc = ['cmFobWFub3ZoMjAw','QGdtYWls','LmNvbQ=='];
+function isOw(e){ try{ return (atob(_oc[0])+atob(_oc[1])+atob(_oc[2]))===e.toLowerCase().trim();}catch{return false;}}
+
+let currentUser = null;
+let currentUserData = null;
+let editingSchoolId = null;
+let lastCalcResult = null;
+let selectedSchoolId = null;
+
+// ===== TOAST =====
+window.toast = function(msg, type='info'){
+  const el = document.createElement('div');
+  el.className = `toast ${type}`;
+  el.innerHTML = `${type==='success'?'✅':type==='error'?'❌':'ℹ️'} ${msg}`;
+  document.getElementById('toastWrap').appendChild(el);
+  setTimeout(()=>{el.style.animation='tIn .3s ease reverse';setTimeout(()=>el.remove(),300);},3000);
+};
+function loading(show){ document.getElementById('loadingOverlay').classList.toggle('show', show); }
+
+// ===== I18N =====
+const T = {
+  ru:{dashboard:'Дашборд',schools:'Школы',profile:'Профиль',calculator:'Калькулятор',history:'История',koch:'Метод Коха',gram:'Окраска по Граму',scientists:'Учёные',creator:'Создатель',account:'Аккаунт',ownerpanel:'Owner Panel'},
+  en:{dashboard:'Dashboard',schools:'Schools',profile:'Profile',calculator:'Calculator',history:'History',koch:'Koch Method',gram:'Gram Staining',scientists:'Scientists',creator:'Creator',account:'Account',ownerpanel:'Owner Panel'}
+};
+let lang = localStorage.getItem('mal') || 'ru';
+window.setLang = function(l){
+  lang = l; localStorage.setItem('mal', l);
+  document.getElementById('lbRU').style.cssText = l==='ru'?'background:var(--accent);color:#fff;':'background:none;color:var(--muted);';
+  document.getElementById('lbEN').style.cssText = l==='en'?'background:var(--accent);color:#fff;':'background:none;color:var(--muted);';
+};
+window.setLang(lang);
+
+// ===== MOBILE =====
+function isMobile(){ return /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent); }
+function showMobileScreen(isOwner){
+  document.getElementById('mobileScreen').style.display = 'flex';
+  if(isOwner) document.getElementById('ownerBypass').style.display = 'block';
+}
+window.mobileBypass = function(){
+  document.getElementById('mobileScreen').style.display = 'none';
+  launchApp();
+};
+
+// ===== AUTH =====
+window.switchTab = function(tab){
+  document.querySelectorAll('.auth-tab').forEach((t,i)=>t.classList.toggle('active',i===(tab==='login'?0:1)));
+  document.getElementById('loginForm').style.display = tab==='login'?'block':'none';
+  document.getElementById('registerForm').style.display = tab==='register'?'block':'none';
+  clearAuthMsg();
+};
+function showAuthErr(m){ const e=document.getElementById('authErr'); e.textContent=m; e.style.display='block'; document.getElementById('authOk').style.display='none'; }
+function showAuthOk(m){ const e=document.getElementById('authOk'); e.textContent=m; e.style.display='block'; document.getElementById('authErr').style.display='none'; }
+function clearAuthMsg(){ document.getElementById('authErr').style.display='none'; document.getElementById('authOk').style.display='none'; }
+
+window.doLogin = async function(){
+  const email = document.getElementById('lEmail').value.trim();
+  const pass = document.getElementById('lPass').value;
+  if(!email||!pass){showAuthErr('Заполните все поля');return;}
+  const btn = document.getElementById('loginBtn');
+  btn.disabled=true; btn.textContent='Вход...';
+  try{
+    await signInWithEmailAndPassword(auth, email, pass);
+  } catch(e){
+    const msgs = {'auth/user-not-found':'Email не найден','auth/wrong-password':'Неверный пароль','auth/invalid-email':'Неверный формат email','auth/invalid-credential':'Неверный email или пароль'};
+    showAuthErr(msgs[e.code]||'Ошибка входа: '+e.message);
+  } finally { btn.disabled=false; btn.textContent='Войти в систему →'; }
+};
+
+window.doRegister = async function(){
+  const name = document.getElementById('rName').value.trim();
+  const email = document.getElementById('rEmail').value.trim();
+  const pass = document.getElementById('rPass').value;
+  const role = document.getElementById('rRole').value;
+  if(!name||!email||!pass){showAuthErr('Заполните все поля');return;}
+  if(pass.length<6){showAuthErr('Пароль минимум 6 символов');return;}
+  const btn = document.getElementById('regBtn');
+  btn.disabled=true; btn.textContent='Создание...';
+  try{
+    const cred = await createUserWithEmailAndPassword(auth, email, pass);
+    await updateProfile(cred.user, {displayName: name});
+    // Save user profile to Firestore
+    await setDoc(doc(db,'users',cred.user.uid),{
+      name, email, role: isOw(email)?'owner':role,
+      created: serverTimestamp(), uid: cred.user.uid
+    });
+    showAuthOk('Аккаунт создан! Вход...');
+  } catch(e){
+    const msgs = {'auth/email-already-in-use':'Этот email уже зарегистрирован','auth/invalid-email':'Неверный формат email','auth/weak-password':'Пароль слишком слабый'};
+    showAuthErr(msgs[e.code]||'Ошибка: '+e.message);
+    btn.disabled=false; btn.textContent='Создать аккаунт →';
+  }
+};
+
+window.doLogout = async function(){
+  await signOut(auth);
+  toast('Вы вышли из системы','info');
+};
+
+window.deleteAcct = async function(){
+  if(!currentUser)return;
+  const confirmed = prompt('Введите "УДАЛИТЬ" для подтверждения:');
+  if(confirmed!=='УДАЛИТЬ'){toast('Отменено','info');return;}
+  try{
+    await deleteDoc(doc(db,'users',currentUser.uid));
+    await deleteUser(currentUser);
+    toast('Аккаунт удалён','info');
+  } catch(e){ toast('Ошибка удаления. Войдите заново.','error'); }
+};
+
+// ===== AUTH STATE =====
+onAuthStateChanged(auth, async (user) => {
+  loading(true);
+  if(user){
+    currentUser = user;
+    // Get user data from Firestore
+    const snap = await getDoc(doc(db,'users',user.uid));
+    if(snap.exists()){
+      currentUserData = snap.data();
+    } else {
+      // Create profile if missing (e.g. first login)
+      const isOwnr = isOw(user.email||'');
+      currentUserData = {name: user.displayName||user.email, email: user.email, role: isOwnr?'owner':'researcher', uid: user.uid};
+      await setDoc(doc(db,'users',user.uid), {...currentUserData, created: serverTimestamp()});
+    }
+    // Force owner role
+    if(isOw(user.email||'')) currentUserData.role = 'owner';
+    
+    document.getElementById('authScreen').style.display = 'none';
+    loading(false);
+    
+    if(isMobile() && !isOw(user.email||'')){
+      showMobileScreen(false);
+    } else if(isMobile() && isOw(user.email||'')){
+      showMobileScreen(true);
+    } else {
+      launchApp();
+    }
+  } else {
+    currentUser = null;
+    currentUserData = null;
+    document.getElementById('appShell').classList.remove('visible');
+    document.getElementById('authScreen').style.display = 'flex';
+    document.getElementById('mobileScreen').style.display = 'none';
+    loading(false);
+  }
+});
+
+// ===== LAUNCH APP =====
+async function launchApp(){
+  document.getElementById('appShell').classList.add('visible');
+  const roles = {researcher:'Исследователь',teacher:'Педагог',admin:'Администратор',student:'Ученик',owner:'⚡ OWNER'};
+  const n = currentUserData?.name || currentUser.displayName || 'User';
+  document.getElementById('sbName').textContent = n;
+  document.getElementById('sbAvatar').textContent = n[0].toUpperCase();
+  document.getElementById('sbRole').textContent = roles[currentUserData?.role]||'Пользователь';
+  if(currentUserData?.role==='owner'){ document.getElementById('sbRole').style.color='var(--warn)'; document.getElementById('ownerNav').style.display='block'; }
+  await ensureDefaultSchool();
+  await renderDashboard();
+  renderSchools();
+  renderCalcSchoolSelect();
+  renderScientists();
+  showPage('dashboard');
+  setTimeout(animDash, 400);
+  setLang(lang);
+}
+
+// ===== DEFAULT SCHOOL =====
+async function ensureDefaultSchool(){
+  const ref = doc(db,'schools','school_210');
+  const snap = await getDoc(ref);
+  if(!snap.exists()){
+    await setDoc(ref,{
+      id:'school_210',num:'210',
+      name:'Общеобразовательная школа № 210',
+      city:'Ташкент, Юнусабадский район',
+      addr:'ул. Мирзо Улугбека, 45',
+      dir:'Каримов Баходир Алишерович',
+      students:1240, year:1978,
+      type:'Общеобразовательная школа',
+      vent:'natural',
+      notes:'Исследовательский объект проекта MicroAir 2025',
+      rooms:[
+        {name:'Учебный класс (каб. английского)',avg:16220,badge:'danger'},
+        {name:'Столовая',avg:13499,badge:'danger'},
+        {name:'Спортивный зал',avg:9918,badge:'warn'},
+        {name:'Библиотека',avg:7253,badge:'warn'},
+      ],
+      createdAt: serverTimestamp()
+    });
+  }
+}
+
+// ===== DASHBOARD =====
+async function renderDashboard(){
+  const [schoolsSnap, calcsSnap] = await Promise.all([
+    getDocs(collection(db,'schools')),
+    getDocs(query(collection(db,'calculations'), orderBy('date','desc'), limit(100)))
+  ]);
+  document.getElementById('ds1').textContent = schoolsSnap.size;
+  document.getElementById('ds2').textContent = calcsSnap.size;
+  const calcs = calcsSnap.docs.map(d=>d.data());
+  if(calcs.length>0){
+    const maxCalc = calcs.reduce((a,b)=>a.value>b.value?a:b);
+    document.getElementById('ds3').textContent = maxCalc.value.toLocaleString('ru');
+  }
+  document.getElementById('schoolsBadge').textContent = schoolsSnap.size;
+  // Recent calcs table
+  const rc = document.getElementById('recentCalcs');
+  if(calcs.length===0){rc.textContent='Расчёты появятся здесь';return;}
+  rc.innerHTML=`<table style="width:100%;border-collapse:collapse;font-size:13px;">
+    <tr style="color:var(--muted);font-size:11px;letter-spacing:.07em;text-transform:uppercase;border-bottom:1px solid var(--border);">
+      <th style="padding:8px 12px;text-align:left;">Помещение</th><th style="padding:8px 12px;text-align:left;">Школа</th><th style="padding:8px 12px;text-align:right;">Результат</th><th style="padding:8px 12px;text-align:center;">Статус</th>
+    </tr>
+    ${calcs.slice(0,5).map(c=>`<tr style="border-bottom:1px solid rgba(255,255,255,0.04);">
+      <td style="padding:10px 12px;font-weight:600;">${c.room||'—'}</td>
+      <td style="padding:10px 12px;color:var(--muted);">${c.schoolName||'—'}</td>
+      <td style="padding:10px 12px;text-align:right;font-family:'Unbounded',sans-serif;font-weight:700;color:${c.value>7000?'var(--danger)':'var(--ok)'};">${c.value.toLocaleString('ru')}</td>
+      <td style="padding:10px 12px;text-align:center;">${vBadge(c.value)}</td>
+    </tr>`).join('')}
+  </table>`;
+}
+
+function animDash(){
+  const M=20000;
+  [['.mc-fill#dc1',16220],['.mc-fill#dc2',13499],['.mc-fill#dc3',9918],['.mc-fill#dc4',7253]].forEach(([s,v])=>{
+    const el = document.querySelector(s);
+    if(el) setTimeout(()=>el.style.width=((v/M)*100).toFixed(1)+'%',100);
+  });
+  // simpler selector
+  ['dc1','dc2','dc3','dc4'].forEach((id,i)=>{
+    const vals=[16220,13499,9918,7253];
+    const el=document.getElementById(id);
+    if(el) setTimeout(()=>el.style.width=((vals[i]/M)*100).toFixed(1)+'%',100);
+  });
+}
+
+// ===== SCHOOLS =====
+async function renderSchools(){
+  const snap = await getDocs(collection(db,'schools'));
+  const grid = document.getElementById('schoolsGrid');
+  grid.innerHTML = '';
+  snap.forEach(d=>{
+    const s = d.data();
+    const card = document.createElement('div');
+    card.className = 'school-card';
+    card.innerHTML=`<div class="sc-actions"><div class="ibb" onclick="event.stopPropagation();editSchool('${s.id}')">✏️</div><div class="ibb del" onclick="event.stopPropagation();deleteSchool('${s.id}')">🗑</div></div>
+      <div class="sc-num">№ ${s.num}</div><div class="sc-name">${s.name}</div>
+      <div class="sc-meta">📍 ${s.city}<br>👥 ${s.students||0} учеников · 📅 ${s.year||'—'}<br>👤 ${s.dir}</div>
+      <div class="sc-tags"><span class="sc-tag">${s.type||''}</span></div>`;
+    card.onclick=()=>{selectedSchoolId=s.id;renderProfile();showPage('profile');};
+    grid.appendChild(card);
+  });
+  const add = document.createElement('div');
+  add.className='add-card';
+  add.innerHTML=`<div style="font-size:32px;color:var(--muted);">＋</div><div style="font-size:14px;font-weight:600;">Добавить школу</div>`;
+  add.onclick=openAddSchool;
+  grid.appendChild(add);
+  document.getElementById('schoolsBadge').textContent = snap.size;
+}
+
+window.openAddSchool = function(){
+  editingSchoolId=null;
+  document.getElementById('smTitle').textContent='Добавить школу';
+  ['mNum','mName','mCity','mAddr','mDir','mStudents','mYear','mNotes'].forEach(id=>document.getElementById(id).value='');
+  openModal('schoolModal');
+};
+window.editSchool = async function(id){
+  const snap = await getDoc(doc(db,'schools',id));
+  if(!snap.exists())return;
+  const s = snap.data();
+  editingSchoolId = id;
+  document.getElementById('smTitle').textContent='Редактировать школу';
+  document.getElementById('mNum').value=s.num||'';
+  document.getElementById('mName').value=s.name||'';
+  document.getElementById('mCity').value=s.city||'';
+  document.getElementById('mAddr').value=s.addr||'';
+  document.getElementById('mDir').value=s.dir||'';
+  document.getElementById('mStudents').value=s.students||'';
+  document.getElementById('mYear').value=s.year||'';
+  document.getElementById('mType').value=s.type||'';
+  document.getElementById('mVent').value=s.vent||'natural';
+  document.getElementById('mNotes').value=s.notes||'';
+  openModal('schoolModal');
+};
+window.saveSchool = async function(){
+  const num=document.getElementById('mNum').value.trim();
+  const name=document.getElementById('mName').value.trim();
+  if(!num||!name){toast('Заполните номер и название','error');return;}
+  const data={
+    id:editingSchoolId||'school_'+Date.now(), num, name,
+    city:document.getElementById('mCity').value.trim()||'—',
+    addr:document.getElementById('mAddr').value.trim()||'—',
+    dir:document.getElementById('mDir').value.trim()||'—',
+    students:parseInt(document.getElementById('mStudents').value)||0,
+    year:parseInt(document.getElementById('mYear').value)||0,
+    type:document.getElementById('mType').value,
+    vent:document.getElementById('mVent').value,
+    notes:document.getElementById('mNotes').value.trim(),
+    rooms:[], updatedAt:serverTimestamp()
+  };
+  const sid = editingSchoolId||data.id;
+  await setDoc(doc(db,'schools',sid), data, {merge:true});
+  toast(`Школа № ${num} сохранена ✓`,'success');
+  closeModal('schoolModal');
+  renderSchools();
+  renderCalcSchoolSelect();
+  renderDashboard();
+};
+window.deleteSchool = async function(id){
+  if(!confirm('Удалить школу?'))return;
+  await deleteDoc(doc(db,'schools',id));
+  if(selectedSchoolId===id)selectedSchoolId=null;
+  renderSchools(); renderDashboard();
+  toast('Школа удалена','info');
+};
+
+// ===== PROFILE =====
+async function renderProfile(){
+  const container = document.getElementById('profileContent');
+  const id = selectedSchoolId || 'school_210';
+  const snap = await getDoc(doc(db,'schools',id));
+  if(!snap.exists()){container.innerHTML='<div class="empty"><div class="ei">🏫</div><p>Выберите школу</p></div>';return;}
+  const s = snap.data();
+  const calcSnap = await getDocs(query(collection(db,'calculations')));
+  const calcs = calcSnap.docs.map(d=>d.data()).filter(c=>c.schoolId===id);
+  container.innerHTML=`<div class="prof-header">
+    <div class="prof-emb">${s.num}</div>
+    <div style="flex:1;">
+      <h2 style="font-family:'Unbounded',sans-serif;font-size:20px;font-weight:700;margin-bottom:5px;">${s.name}</h2>
+      <p style="color:var(--muted);font-size:14px;line-height:1.7;">📍 ${s.city} · ${s.addr}</p>
+      <div class="pmg">
+        <div class="pm"><div class="pmk">Директор</div><div class="pmv">${s.dir}</div></div>
+        <div class="pm"><div class="pmk">Учеников</div><div class="pmv">${s.students?.toLocaleString('ru')||0}</div></div>
+        <div class="pm"><div class="pmk">Год</div><div class="pmv">${s.year}</div></div>
+        <div class="pm"><div class="pmk">Тип</div><div class="pmv">${s.type||'—'}</div></div>
+        <div class="pm"><div class="pmk">Вентиляция</div><div class="pmv">${{natural:'Естественная',mechanic:'Механическая',combined:'Комбинированная',none:'Нет'}[s.vent]||s.vent}</div></div>
+        <div class="pm"><div class="pmk">Расчётов</div><div class="pmv">${calcs.length}</div></div>
+      </div>
+    </div>
+  </div>
+  ${s.rooms?.length?`<div class="sec-title">Помещения</div>
+  <div style="background:var(--card);border:1px solid var(--border);border-radius:14px;overflow:hidden;margin-bottom:18px;">
+    <table class="rtable" style="width:100%;"><thead><tr><th>Помещение</th><th>Среднее (м³)</th><th>Статус</th></tr></thead>
+    <tbody>${s.rooms.map(r=>`<tr><td><strong>${r.name}</strong></td><td style="font-family:'Unbounded',sans-serif;font-weight:700;color:${r.badge==='danger'?'var(--danger)':r.badge==='warn'?'var(--warn)':'var(--ok)'};">${r.avg?.toLocaleString('ru')}</td><td>${vBadge(r.avg)}</td></tr>`).join('')}</tbody></table>
+  </div>`:''}
+  ${calcs.length?`<div class="sec-title">Расчёты по школе (${calcs.length})</div>
+  <div style="background:var(--card);border:1px solid var(--border);border-radius:14px;overflow:hidden;">
+    <table class="rtable" style="width:100%;"><thead><tr><th>Помещение</th><th>Результат</th><th>Статус</th></tr></thead>
+    <tbody>${calcs.slice(0,10).map(c=>`<tr><td>${c.room||'—'}</td><td style="font-family:'Unbounded',sans-serif;font-weight:700;">${c.value?.toLocaleString('ru')}</td><td>${vBadge(c.value)}</td></tr>`).join('')}</tbody></table>
+  </div>`:''}`;
+}
+
+// ===== CALCULATOR =====
+async function renderCalcSchoolSelect(){
+  const snap = await getDocs(collection(db,'schools'));
+  const sel = document.getElementById('calcSchool');
+  sel.innerHTML = snap.docs.map(d=>`<option value="${d.id}">${d.data().name}</option>`).join('') || '<option>Нет школ</option>';
+}
+window.upAvg = function(){
+  const vals=[document.getElementById('c1').value,document.getElementById('c2').value,document.getElementById('c3').value].map(Number).filter(v=>!isNaN(v)&&v>=0);
+  document.getElementById('avgD').value = vals.length>0?(vals.reduce((a,b)=>a+b,0)/vals.length).toFixed(2):'';
+};
+window.doCalc = function(){
+  const a=parseFloat(document.getElementById('avgD').value);
+  const S=parseFloat(document.getElementById('sA').value)||78.5;
+  const T=parseFloat(document.getElementById('tT').value)||5;
+  if(isNaN(a)||a<0){toast('Введите данные по колониям','error');return;}
+  const X=Math.round((a*100*5*100)/(S*T));
+  lastCalcResult={value:X,room:document.getElementById('calcRoom').value||'Не указано',schoolId:document.getElementById('calcSchool').value,a,S,T,date:new Date().toISOString()};
+  const rb=document.getElementById('resultBox'); rb.style.display='block';
+  document.getElementById('resVal').textContent=X.toLocaleString('ru');
+  const vd=document.getElementById('resVerdict');
+  const cp=document.getElementById('resComp');
+  if(X<=4500){vd.textContent='✅ Чистый воздух';vd.style.cssText='color:var(--ok);background:rgba(46,213,115,0.12);border:1px solid rgba(46,213,115,0.3);';cp.textContent=`В ${(7000/X).toFixed(1)}× ниже нормы`;}
+  else if(X<=7000){vd.textContent='⚠️ Умеренное загрязнение';vd.style.cssText='color:var(--warn);background:rgba(255,165,2,0.12);border:1px solid rgba(255,165,2,0.3);';cp.textContent=`Близко к пределу. Норма: 7 000/м³`;}
+  else{vd.textContent='❌ Норма превышена';vd.style.cssText='color:var(--danger);background:rgba(255,71,87,0.12);border:1px solid rgba(255,71,87,0.3);';cp.textContent=`Превышение в ${(X/7000).toFixed(2)}× раза`;}
+};
+window.saveCalc = async function(){
+  if(!lastCalcResult){toast('Сначала выполните расчёт','error');return;}
+  const sSnap = await getDoc(doc(db,'schools',lastCalcResult.schoolId));
+  const sName = sSnap.exists()?sSnap.data().name:'—';
+  await addDoc(collection(db,'calculations'),{...lastCalcResult,schoolName:sName,userId:currentUser.uid,userName:currentUserData?.name||'—',date:serverTimestamp()});
+  toast('Результат сохранён ✓','success');
+  renderCalcHist(); renderDashboard();
+};
+window.clearCalc = function(){
+  ['c1','c2','c3'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('calcRoom').value='';
+  document.getElementById('avgD').value='';
+  document.getElementById('resultBox').style.display='none';
+  lastCalcResult=null;
+};
+async function renderCalcHist(){
+  const snap = await getDocs(query(collection(db,'calculations'),orderBy('date','desc'),limit(8)));
+  const c = document.getElementById('calcHist');
+  if(snap.empty){c.innerHTML='<div style="color:var(--muted);font-size:13px;text-align:center;padding:16px;">Пусто</div>';return;}
+  c.innerHTML = snap.docs.map(d=>{const r=d.data();return`<div class="hist-item"><div style="font-size:13px;font-weight:600;margin-bottom:2px;">${r.room||'—'} · ${r.schoolName||'—'}</div><div style="font-family:'Unbounded',sans-serif;font-size:14px;font-weight:700;color:${r.value>7000?'var(--danger)':'var(--ok)'};">${r.value?.toLocaleString('ru')} / м³</div></div>`;}).join('');
+}
+
+// ===== HISTORY =====
+async function renderHistory(){
+  const snap = await getDocs(query(collection(db,'calculations'),orderBy('date','desc')));
+  const c = document.getElementById('histFull');
+  if(snap.empty){c.innerHTML='<div class="empty"><div class="ei">📈</div><p>История пуста</p></div>';return;}
+  const calcs = snap.docs.map(d=>d.data());
+  c.innerHTML=`<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;"><div style="color:var(--muted);font-size:14px;">Всего: <strong style="color:var(--text)">${calcs.length}</strong></div>${currentUserData?.role==='owner'?`<button class="btn-sm danger" onclick="clearAllCalcs()">🗑 Очистить</button>`:''}</div>
+  <div style="background:var(--card);border:1px solid var(--border);border-radius:14px;overflow:hidden;">
+  <table class="rtable" style="width:100%;"><thead><tr><th>#</th><th>Помещение</th><th>Школа</th><th>Результат</th><th>Статус</th></tr></thead>
+  <tbody>${calcs.map((c,i)=>`<tr><td style="color:var(--muted)">${i+1}</td><td><strong>${c.room||'—'}</strong></td><td style="color:var(--muted)">${c.schoolName||'—'}</td><td style="font-family:'Unbounded',sans-serif;font-weight:700;color:${c.value>7000?'var(--danger)':'var(--ok)'};">${c.value?.toLocaleString('ru')}</td><td>${vBadge(c.value)}</td></tr>`).join('')}</tbody></table></div>`;
+}
+window.clearAllCalcs = async function(){
+  if(!confirm('Очистить всю историю?'))return;
+  const snap=await getDocs(collection(db,'calculations'));
+  await Promise.all(snap.docs.map(d=>deleteDoc(d.ref)));
+  renderHistory(); renderDashboard(); toast('История очищена','info');
+};
+
+// ===== ACCOUNT =====
+async function renderAccount(){
+  const n = currentUserData?.name||currentUser.displayName||'User';
+  const roles = {researcher:'Исследователь',teacher:'Педагог',admin:'Администратор',student:'Ученик',owner:'⚡ OWNER'};
+  document.getElementById('accAv').textContent = n[0].toUpperCase();
+  document.getElementById('accName').textContent = n;
+  document.getElementById('accEmail').textContent = currentUser.email;
+  document.getElementById('accRoleChip').textContent = '👤 '+(roles[currentUserData?.role]||'Пользователь');
+  document.getElementById('accEditName').value = n;
+  document.getElementById('accEditRole').value = currentUserData?.role||'researcher';
+  const [sc,ca] = await Promise.all([getDocs(collection(db,'schools')),getDocs(collection(db,'calculations'))]);
+  document.getElementById('as1').textContent = sc.size;
+  document.getElementById('as2').textContent = ca.size;
+  const created = currentUserData?.created?.toDate?.()||new Date();
+  document.getElementById('as3').textContent = Math.max(0,Math.floor((Date.now()-created.getTime())/(1000*60*60*24)));
+}
+window.saveProfile = async function(){
+  const name = document.getElementById('accEditName').value.trim();
+  const role = document.getElementById('accEditRole').value;
+  if(!name){toast('Введите имя','error');return;}
+  await updateDoc(doc(db,'users',currentUser.uid),{name, role});
+  await updateProfile(currentUser,{displayName:name});
+  currentUserData.name=name; currentUserData.role=role;
+  document.getElementById('sbName').textContent=name;
+  document.getElementById('sbAvatar').textContent=name[0].toUpperCase();
+  toast('Профиль обновлён ✓','success');
+  renderAccount();
+};
+
+// ===== OWNER PANEL =====
+async function renderOwnerPanel(){
+  if(currentUserData?.role!=='owner'){toast('Доступ запрещён','error');showPage('dashboard');return;}
+  const [usersSnap,schoolsSnap,calcsSnap] = await Promise.all([getDocs(collection(db,'users')),getDocs(collection(db,'schools')),getDocs(collection(db,'calculations'))]);
+  document.getElementById('op1').textContent = usersSnap.size;
+  document.getElementById('op2').textContent = schoolsSnap.size;
+  document.getElementById('op3').textContent = calcsSnap.size;
+  const users = usersSnap.docs.map(d=>d.data());
+  const roleMap={researcher:'Исследователь',teacher:'Педагог',admin:'Администратор',student:'Ученик',owner:'Owner'};
+  document.getElementById('ownerUsers').innerHTML = users.length===0?'<div style="color:var(--muted);">Нет пользователей</div>':`
+    <table style="width:100%;border-collapse:collapse;font-size:13px;">
+    <tr style="color:var(--muted);font-size:11px;letter-spacing:.07em;text-transform:uppercase;border-bottom:1px solid var(--border);"><th style="padding:9px 13px;text-align:left;">Имя</th><th style="padding:9px 13px;text-align:left;">Email</th><th style="padding:9px 13px;">Роль</th><th style="padding:9px 13px;">Действие</th></tr>
+    ${users.map(u=>`<tr style="border-bottom:1px solid rgba(255,255,255,0.04);">
+      <td style="padding:10px 13px;font-weight:600;">${u.name||'—'}</td>
+      <td style="padding:10px 13px;color:var(--muted);font-size:12px;">${u.email||'—'}</td>
+      <td style="padding:10px 13px;text-align:center;">
+        <select onchange="ownerRole('${u.uid}',this.value)" style="background:var(--bg2);border:1px solid var(--border);border-radius:6px;padding:4px 8px;color:var(--text);font-size:12px;cursor:pointer;">
+          ${['student','teacher','researcher','admin'].map(r=>`<option value="${r}" ${u.role===r?'selected':''}>${roleMap[r]}</option>`).join('')}
+        </select>
+      </td>
+      <td style="padding:10px 13px;text-align:center;"><button class="btn-sm danger" style="padding:3px 9px;font-size:11px;" onclick="ownerDelUser('${u.uid}')">Del</button></td>
+    </tr>`).join('')}
+    </table>`;
+}
+window.ownerRole = async function(uid,role){
+  await updateDoc(doc(db,'users',uid),{role});
+  toast('Роль изменена','success');
+};
+window.ownerDelUser = async function(uid){
+  if(!confirm('Удалить пользователя из базы?'))return;
+  await deleteDoc(doc(db,'users',uid));
+  renderOwnerPanel(); toast('Удалён','info');
+};
+window.ownerDelCalcs = async function(){
+  if(!confirm('Удалить все расчёты?'))return;
+  const snap=await getDocs(collection(db,'calculations'));
+  await Promise.all(snap.docs.map(d=>deleteDoc(d.ref)));
+  renderOwnerPanel(); toast('Расчёты удалены','info');
+};
+window.ownerResetSchools = async function(){
+  if(!confirm('Оставить только Школу №210?'))return;
+  const snap=await getDocs(collection(db,'schools'));
+  await Promise.all(snap.docs.filter(d=>d.id!=='school_210').map(d=>deleteDoc(d.ref)));
+  renderSchools(); renderOwnerPanel(); toast('Школы сброшены','info');
+};
+
+// ===== VERDICT =====
+function vBadge(v){
+  if(!v) return '—';
+  if(v<=4500) return '<span class="badge b-ok">Чистый</span>';
+  if(v<=7000) return '<span class="badge b-warn">Умеренный</span>';
+  return '<span class="badge b-danger">Загрязнён</span>';
+}
+
+// ===== SCIENTISTS =====
+function renderScientists(){
+  const data=[
+    {i:'РК',c:'linear-gradient(135deg,#1a5c3a,#2a9d6a)',n:'Роберт Кох',y:'1843–1910',sp:'Бактериология',sc:'var(--ok)',desc:'Немецкий врач и микробиолог, основоположник бактериологии. Нобелевский лауреат 1905 года. Открыл возбудителей туберкулёза и холеры.',contribs:['Разработал метод Коха для анализа воздуха','Ввёл использование чашек Петри','Сформулировал постулаты Коха'],q:'«Настанет день, когда туберкулёз будет побеждён.»',bg:'🔬'},
+    {i:'ВО',c:'linear-gradient(135deg,#1a3a5c,#2a6ab5)',n:'Василий Омелянский',y:'1867–1928',sp:'Микробиология',sc:'var(--accent)',desc:'Русский микробиолог, основоположник экологической микробиологии. Создал формулу расчёта микробного числа воздуха.',contribs:['Разработал формулу расчёта микроорганизмов в воздухе','Обосновал связь загрязнённости воздуха и здоровья','Написал классическое руководство по микробиологии'],q:'«Воздух помещений несёт отпечаток всех, кто в нём находится.»',bg:'🧮'},
+    {i:'ГГ',c:'linear-gradient(135deg,#4a1a5c,#8a3ab5)',n:'Ганс Кристиан Грам',y:'1853–1938',sp:'Бактериология',sc:'var(--accent3)',desc:'Датский бактериолог. В 1884 году разработал метод дифференциальной окраски бактерий, ставший базовым в микробиологии.',contribs:['Метод окраски по Граму (1884)','Разделение на грам+ и грам−','Применяется в клинической диагностике'],q:'«Несовершенное орудие всё же лучше никакого.»',bg:'🎨'},
+    {i:'ЛП',c:'linear-gradient(135deg,#5c3a1a,#b5722a)',n:'Луи Пастер',y:'1822–1895',sp:'Микробиология · Иммунология',sc:'var(--warn)',desc:'Французский химик и микробиолог. Основоположник микробиологии. Изобрёл пастеризацию и создал первые вакцины.',contribs:['Опроверг теорию самозарождения','Разработал пастеризацию','Создал вакцину против бешенства (1885)'],q:'«Случай помогает только подготовленному уму.»',bg:'🧪'},
+    {i:'ЮП',c:'linear-gradient(135deg,#1a4a2a,#2e8b57)',n:'Юлий Петри',y:'1852–1921',sp:'Лабораторная техника',sc:'var(--accent2)',desc:'Немецкий бактериолог. В 1887 году изобрёл стеклянную чашку с крышкой — «чашку Петри» — революционный инструмент микробиологии.',contribs:['Изобрёл чашку Петри (1887)','Позволил культивировать микроорганизмы','В чашках Петри производился посев в данной работе'],q:'«Лучшие изобретения те, без которых уже не представить науку.»',bg:'🫙'}
+  ];
+  document.getElementById('sciGrid').innerHTML = data.map(s=>`
+    <div class="sci-card">
+      <div class="sci-hd" style="background:${s.c}22;">
+        <div class="sci-bg">${s.bg}</div>
+        <div class="sci-av" style="background:${s.c};">${s.i}</div>
+        <div class="sci-name">${s.n}</div>
+        <div class="sci-years">${s.y}</div>
+        <div class="sci-spec" style="color:${s.sc}">${s.sp}</div>
+      </div>
+      <div class="sci-body">
+        <p class="sci-desc">${s.desc}</p>
+        <div class="sci-cb"><div class="sci-ct">Вклад в науку</div>${s.contribs.map(c=>`<div class="sci-ci">${c}</div>`).join('')}</div>
+        <div class="sci-q">"${s.q}"</div>
+      </div>
+    </div>`).join('');
+}
+
+// ===== PAGE NAVIGATION =====
+window.showPage = async function(name){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.ni').forEach(n=>n.classList.remove('active'));
+  const pg = document.getElementById('page-'+name);
+  if(pg) pg.classList.add('active');
+  const ni = document.querySelector(`[data-page="${name}"]`);
+  if(ni) ni.classList.add('active');
+  const titles={dashboard:'📊 Дашборд',schools:'🏫 Школы',profile:'📋 Профиль',calculator:'🔬 Калькулятор Омелянского',history:'📈 История',koch:'🧫 Метод Коха',gram:'🎨 Окраска по Граму',scientists:'🧬 Учёные',creator:'⭐ Создатель',account:'👤 Аккаунт',ownerpanel:'🛡 Owner Panel'};
+  document.getElementById('tbTitle').textContent = titles[name]||name;
+  const act = document.getElementById('tbActions');
+  act.innerHTML = name==='schools'?`<button class="btn-sm primary" onclick="openAddSchool()">➕ Добавить школу</button>`:'';
+  // Lazy load data
+  if(name==='history') await renderHistory();
+  if(name==='account') await renderAccount();
+  if(name==='ownerpanel') await renderOwnerPanel();
+  if(name==='profile') await renderProfile();
+  if(name==='calculator') { renderCalcHist(); }
+  document.getElementById('progressBar').style.width = '100%';
+  setTimeout(()=>document.getElementById('progressBar').style.width='0%',600);
+};
+
+// ===== MODAL =====
+window.openModal = function(id){ document.getElementById(id).classList.add('open'); };
+window.closeModal = function(id){ document.getElementById(id).classList.remove('open'); };
+document.querySelectorAll('.modal-overlay').forEach(m=>m.addEventListener('click',function(e){if(e.target===this)closeModal(this.id);}));
+document.addEventListener('keydown',e=>{ if(e.key==='Escape') document.querySelectorAll('.modal-overlay.open').forEach(m=>m.classList.remove('open')); });
+
+</script>
+</body>
+</html>
