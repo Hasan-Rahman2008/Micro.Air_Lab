@@ -1,0 +1,1729 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MicroAir Lab</title>
+<meta name="description" content="MicroAir Lab — микробиологический анализ воздуха">
+<link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@400;600;700;800&family=Golos+Text:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#060b16;--bg2:#0d1526;--card:#0f1c30;--card2:#152238;
+  --border:rgba(99,178,255,0.1);--border2:rgba(99,178,255,0.2);
+  --accent:#3b9eff;--accent2:#00d4c8;--accent3:#7c5cfc;
+  --danger:#ff4757;--warn:#ffa502;--ok:#2ed573;
+  --text:#e8f4ff;--muted:#6b8cad;--muted2:#4a6a8a;
+  --sw:260px;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+html,body{height:100%;background:var(--bg);font-family:'Golos Text',sans-serif;color:var(--text);overflow:hidden;}
+::-webkit-scrollbar{width:4px;height:4px;}
+::-webkit-scrollbar-track{background:var(--bg2);}
+::-webkit-scrollbar-thumb{background:var(--muted2);border-radius:2px;}
+
+/* ── AUTH ── */
+#authScreen{position:fixed;inset:0;z-index:1000;display:flex;align-items:center;justify-content:center;
+  background:radial-gradient(ellipse 100% 80% at 50% -10%,rgba(59,158,255,.15),transparent 60%),
+  radial-gradient(ellipse 60% 60% at 90% 100%,rgba(124,92,252,.1),transparent 50%),var(--bg);}
+.agrid{position:absolute;inset:0;pointer-events:none;
+  background-image:linear-gradient(rgba(59,158,255,.04) 1px,transparent 1px),linear-gradient(90deg,rgba(59,158,255,.04) 1px,transparent 1px);
+  background-size:60px 60px;}
+.aorb{position:absolute;border-radius:50%;filter:blur(80px);animation:oF 8s ease-in-out infinite;}
+.aorb1{width:400px;height:400px;background:rgba(59,158,255,.08);top:-100px;right:-100px;}
+.aorb2{width:300px;height:300px;background:rgba(124,92,252,.08);bottom:-50px;left:-50px;animation-delay:3s;}
+@keyframes oF{0%,100%{transform:translate(0,0) scale(1);}50%{transform:translate(20px,-20px) scale(1.05);}}
+.abox{position:relative;z-index:2;width:100%;max-width:440px;background:var(--card);border:1px solid var(--border2);border-radius:24px;padding:44px 38px;box-shadow:0 40px 80px rgba(0,0,0,.5);}
+.alogo{text-align:center;margin-bottom:28px;}
+.alogo-icon{display:inline-flex;align-items:center;justify-content:center;width:60px;height:60px;border-radius:16px;background:linear-gradient(135deg,var(--accent),var(--accent2));font-size:26px;margin-bottom:12px;box-shadow:0 8px 24px rgba(59,158,255,.3);}
+.alogo h1{font-family:'Unbounded',sans-serif;font-size:19px;font-weight:700;background:linear-gradient(135deg,#fff,var(--accent));-webkit-background-clip:text;-webkit-text-fill-color:transparent;}
+.atabs{display:flex;gap:4px;background:var(--bg2);border-radius:12px;padding:4px;margin-bottom:22px;}
+.atab{flex:1;text-align:center;padding:9px;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;transition:.2s;color:var(--muted);}
+.atab.on{background:var(--card2);color:var(--text);box-shadow:0 2px 8px rgba(0,0,0,.3);}
+.fg{margin-bottom:15px;}
+.fl{display:block;font-size:11px;font-weight:700;color:var(--muted);margin-bottom:6px;letter-spacing:.05em;text-transform:uppercase;}
+.fi{width:100%;padding:11px 14px;background:var(--bg2);border:1px solid var(--border);border-radius:11px;color:var(--text);font-family:'Golos Text',sans-serif;font-size:14px;transition:.2s;outline:none;}
+.fi:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(59,158,255,.12);}
+.fi::placeholder{color:var(--muted2);}
+.fi-sel{appearance:none;cursor:pointer;}
+.bmain{width:100%;padding:13px;border:none;cursor:pointer;background:linear-gradient(135deg,var(--accent),#2980d9);color:#fff;font-family:'Golos Text',sans-serif;font-size:15px;font-weight:700;border-radius:11px;transition:.2s;box-shadow:0 4px 16px rgba(59,158,255,.3);}
+.bmain:hover{transform:translateY(-1px);box-shadow:0 8px 24px rgba(59,158,255,.4);}
+.bmain:disabled{opacity:.6;cursor:not-allowed;transform:none;}
+.amsg{border-radius:9px;padding:9px 13px;font-size:13px;margin-bottom:12px;display:none;}
+.aerr{background:rgba(255,71,87,.12);border:1px solid rgba(255,71,87,.25);color:var(--danger);}
+.aok{background:rgba(46,213,115,.12);border:1px solid rgba(46,213,115,.25);color:var(--ok);}
+
+/* verify screen */
+#verifyScreen{position:fixed;inset:0;z-index:1001;display:none;align-items:center;justify-content:center;background:var(--bg);}
+.verify-box{text-align:center;max-width:400px;padding:40px;background:var(--card);border:1px solid var(--border2);border-radius:24px;}
+
+/* ── APP ── */
+#appShell{display:none;height:100vh;}
+#appShell.on{display:flex;}
+.sidebar{width:var(--sw);flex-shrink:0;background:var(--bg2);border-right:1px solid var(--border);display:flex;flex-direction:column;height:100vh;overflow:hidden;}
+.sb-logo{padding:20px 18px 16px;display:flex;align-items:center;gap:11px;border-bottom:1px solid var(--border);}
+.lmark{width:38px;height:38px;border-radius:11px;flex-shrink:0;background:linear-gradient(135deg,var(--accent),var(--accent2));display:flex;align-items:center;justify-content:center;font-size:17px;}
+.lt1{font-family:'Unbounded',sans-serif;font-size:12px;font-weight:700;}
+.lt2{font-size:10px;color:var(--muted);margin-top:1px;}
+.upill{margin:10px 10px 4px;padding:9px 12px;background:var(--card);border:1px solid var(--border);border-radius:11px;display:flex;align-items:center;gap:9px;cursor:pointer;transition:.2s;}
+.upill:hover{border-color:var(--accent);}
+.uav{width:30px;height:30px;border-radius:50%;background:linear-gradient(135deg,var(--accent3),var(--accent));display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#fff;flex-shrink:0;}
+.uname{font-size:12px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.urole{font-size:10px;color:var(--muted);}
+
+/* lang */
+.langbar{display:flex;gap:3px;margin:6px 10px;background:var(--bg);border-radius:8px;padding:3px;}
+.lbtn{flex:1;padding:5px;border:none;border-radius:5px;font-size:11px;font-weight:700;cursor:pointer;font-family:'Golos Text',sans-serif;transition:.2s;}
+
+/* season toggle */
+.season-toggle{display:flex;gap:3px;margin:0 10px 6px;background:var(--bg);border-radius:8px;padding:3px;}
+.sbtn{flex:1;padding:5px;border:none;border-radius:5px;font-size:11px;font-weight:600;cursor:pointer;font-family:'Golos Text',sans-serif;transition:.2s;color:var(--muted);background:none;}
+.sbtn.on{background:linear-gradient(135deg,#1a5fa8,#0d3d6e);color:#7dc4ff;}
+.sbtn.on.summer{background:linear-gradient(135deg,#7c3a00,#c26000);color:#ffd580;}
+
+/* nav */
+#sbNav{flex:1;overflow-y:auto;overflow-x:hidden;padding-bottom:6px;}
+.nsec{margin-bottom:2px;}
+.nsl-row{display:flex;align-items:center;justify-content:space-between;padding:10px 18px 3px;}
+.nsl{font-size:10px;font-weight:700;letter-spacing:.12em;color:var(--muted2);text-transform:uppercase;}
+.narr{display:flex;gap:2px;}
+.narr button{background:none;border:1px solid var(--border);border-radius:4px;color:var(--muted2);cursor:pointer;font-size:9px;padding:2px 5px;transition:.15s;}
+.narr button:hover{background:var(--card2);color:var(--text);}
+.ni{display:flex;align-items:center;gap:9px;padding:8px 11px;margin:1px 7px;border-radius:9px;cursor:pointer;font-size:13px;font-weight:500;color:var(--muted);transition:.15s;}
+.ni:hover{background:var(--card);color:var(--text);}
+.ni.on{background:linear-gradient(135deg,rgba(59,158,255,.15),rgba(0,212,200,.08));color:var(--accent);border:1px solid rgba(59,158,255,.2);}
+.ni-ic{font-size:16px;flex-shrink:0;width:20px;text-align:center;}
+.nbadge{margin-left:auto;background:var(--accent);color:#fff;font-size:10px;font-weight:700;padding:2px 6px;border-radius:999px;}
+.sb-bot{padding:8px 7px;border-top:1px solid var(--border);}
+.blogout{display:flex;align-items:center;gap:9px;width:100%;padding:9px 11px;border:none;background:none;cursor:pointer;border-radius:9px;color:var(--muted);font-family:'Golos Text',sans-serif;font-size:13px;transition:.15s;}
+.blogout:hover{background:rgba(255,71,87,.1);color:var(--danger);}
+
+/* main */
+.main{flex:1;overflow:hidden;display:flex;flex-direction:column;}
+.topbar{height:58px;flex-shrink:0;border-bottom:1px solid var(--border);padding:0 22px;display:flex;align-items:center;justify-content:space-between;background:var(--bg2);}
+.tb-title{font-family:'Unbounded',sans-serif;font-size:13px;font-weight:700;}
+.tb-act{display:flex;gap:7px;}
+.pbody{flex:1;overflow-y:auto;padding:22px;}
+.page{display:none;}
+.page.on{display:block;}
+
+/* norm indicator */
+.norm-indicator{display:inline-flex;align-items:center;gap:7px;padding:5px 12px;border-radius:999px;font-size:12px;font-weight:700;margin-bottom:16px;}
+.norm-winter{background:rgba(29,78,216,.15);border:1px solid rgba(29,78,216,.3);color:#93c5fd;}
+.norm-summer{background:rgba(180,83,9,.15);border:1px solid rgba(180,83,9,.3);color:#fcd34d;}
+
+/* stats */
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:13px;margin-bottom:20px;}
+.scard{background:var(--card);border:1px solid var(--border);border-radius:15px;padding:18px;position:relative;overflow:hidden;}
+.scard::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:var(--gc);}
+.sc-ic{font-size:20px;margin-bottom:9px;}
+.sc-val{font-family:'Unbounded',sans-serif;font-size:24px;font-weight:700;margin-bottom:2px;}
+.sc-lbl{font-size:11px;color:var(--muted);}
+
+/* section title */
+.stitle{font-family:'Unbounded',sans-serif;font-size:12px;font-weight:700;margin:18px 0 12px;display:flex;align-items:center;gap:9px;}
+.stitle::after{content:'';flex:1;height:1px;background:var(--border);}
+
+/* card */
+.card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:20px;}
+
+/* buttons */
+.bsm{padding:7px 14px;border:1px solid var(--border2);border-radius:7px;background:transparent;color:var(--text);cursor:pointer;font-family:'Golos Text',sans-serif;font-size:12px;font-weight:600;transition:.2s;display:inline-flex;align-items:center;gap:5px;}
+.bsm:hover{background:var(--card2);border-color:var(--accent);}
+.bsm.primary{background:var(--accent);border-color:var(--accent);color:#fff;}
+.bsm.primary:hover{background:#2980d9;}
+.bsm.danger{background:rgba(255,71,87,.1);border-color:rgba(255,71,87,.3);color:var(--danger);}
+
+/* schools */
+.sgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:13px;}
+.sc2{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:20px;cursor:pointer;transition:.2s;position:relative;}
+.sc2:hover{border-color:var(--accent);transform:translateY(-2px);box-shadow:0 8px 20px rgba(59,158,255,.1);}
+.sc2-num{font-family:'Unbounded',sans-serif;font-size:26px;font-weight:800;color:var(--accent);margin-bottom:3px;}
+.sc2-name{font-size:14px;font-weight:600;margin-bottom:7px;}
+.sc2-meta{font-size:11px;color:var(--muted);line-height:1.7;}
+.sc2-act{position:absolute;top:12px;right:12px;display:flex;gap:4px;opacity:0;transition:.2s;}
+.sc2:hover .sc2-act{opacity:1;}
+.ibb{width:26px;height:26px;border-radius:6px;border:1px solid var(--border2);background:var(--bg2);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:12px;color:var(--muted);transition:.15s;}
+.ibb:hover{background:var(--card2);color:var(--text);}
+.ibb.del:hover{background:rgba(255,71,87,.1);color:var(--danger);}
+.addcard{background:var(--bg2);border:2px dashed var(--border2);border-radius:16px;padding:32px 20px;text-align:center;cursor:pointer;transition:.2s;display:flex;flex-direction:column;align-items:center;gap:9px;}
+.addcard:hover{border-color:var(--accent);background:rgba(59,158,255,.04);}
+
+/* tables */
+.rtable{width:100%;border-collapse:collapse;}
+.rtable th{background:var(--bg2);padding:10px 13px;font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);text-align:left;border-bottom:1px solid var(--border);}
+.rtable td{padding:12px 13px;border-bottom:1px solid rgba(255,255,255,.04);font-size:13px;}
+.badge{display:inline-flex;padding:3px 8px;border-radius:999px;font-size:10px;font-weight:700;}
+.b-ok{background:rgba(46,213,115,.12);color:var(--ok);}
+.b-warn{background:rgba(255,165,2,.12);color:var(--warn);}
+.b-danger{background:rgba(255,71,87,.12);color:var(--danger);}
+
+/* calc */
+.clayout{display:grid;grid-template-columns:1fr 340px;gap:16px;}
+.fdisp{background:var(--bg2);border:1px solid var(--border2);border-radius:13px;padding:16px 20px;margin-bottom:20px;text-align:center;}
+.fbig{font-family:'Unbounded',sans-serif;font-size:15px;font-weight:600;color:var(--accent2);letter-spacing:.05em;margin-bottom:7px;}
+.fleg{display:flex;justify-content:center;gap:12px;flex-wrap:wrap;margin-top:8px;}
+.fleg-i{font-size:11px;color:var(--muted);}
+.fleg-i span{color:var(--accent3);font-weight:600;}
+.cgrid{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+.rbox{margin-top:16px;background:linear-gradient(135deg,rgba(59,158,255,.1),rgba(0,212,200,.07));border:2px solid var(--accent);border-radius:13px;padding:20px;text-align:center;display:none;}
+.rbig{font-family:'Unbounded',sans-serif;font-size:32px;font-weight:800;color:var(--accent);margin-bottom:4px;}
+.runit{font-size:12px;color:var(--muted);margin-bottom:10px;}
+.rverdict{font-size:13px;font-weight:600;padding:6px 16px;border-radius:999px;display:inline-block;}
+.hitem{background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:10px 13px;cursor:pointer;transition:.15s;margin-bottom:6px;}
+.hitem:hover{border-color:var(--accent);}
+.nmini{width:100%;border-collapse:collapse;font-size:12px;}
+.nmini th{background:var(--bg2);padding:7px 11px;font-size:10px;color:var(--muted);font-weight:600;text-align:left;border-bottom:1px solid var(--border);}
+.nmini td{padding:8px 11px;border-bottom:1px solid rgba(255,255,255,.04);}
+
+/* chart */
+.mcrow{display:flex;align-items:center;gap:9px;margin-bottom:7px;}
+.mclbl{width:85px;font-size:11px;color:var(--muted);text-align:right;flex-shrink:0;}
+.mctrack{flex:1;height:26px;background:var(--bg2);border-radius:5px;overflow:hidden;position:relative;}
+.mcfill{height:100%;border-radius:5px;display:flex;align-items:center;padding-left:9px;font-size:11px;font-weight:700;color:#fff;transition:width 1.2s cubic-bezier(.4,0,.2,1);}
+.mcnorm{position:absolute;top:0;bottom:0;width:2px;background:rgba(46,213,115,.7);}
+
+/* scientists */
+.scigrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px;}
+.scicard{background:var(--card);border:1px solid var(--border);border-radius:16px;overflow:hidden;transition:.2s;}
+.scicard:hover{border-color:var(--accent);transform:translateY(-2px);}
+.scihd{padding:20px 20px 16px;position:relative;overflow:hidden;}
+.sciav{width:64px;height:64px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:'Unbounded',sans-serif;font-size:22px;font-weight:700;margin-bottom:11px;position:relative;z-index:1;box-shadow:0 4px 14px rgba(0,0,0,.3);}
+.scin{font-family:'Unbounded',sans-serif;font-size:13px;font-weight:700;margin-bottom:3px;position:relative;z-index:1;}
+.sciy{font-size:10px;color:var(--muted);margin-bottom:6px;position:relative;z-index:1;}
+.scisp{font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;position:relative;z-index:1;}
+.scibod{padding:0 20px 20px;}
+.scidesc{font-size:12px;color:var(--muted);line-height:1.7;margin-bottom:11px;}
+.scicb{background:var(--bg2);border-radius:8px;padding:11px;}
+.scict{font-size:9px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--muted2);margin-bottom:6px;}
+.scici{display:flex;gap:6px;font-size:11px;margin-bottom:4px;color:var(--text);}
+.scici::before{content:'→';color:var(--accent);flex-shrink:0;}
+.sciq{background:linear-gradient(135deg,rgba(59,158,255,.06),rgba(0,212,200,.04));border-left:3px solid var(--accent2);border-radius:0 8px 8px 0;padding:9px 11px;margin-top:9px;font-size:11px;font-style:italic;color:var(--muted);line-height:1.6;}
+.scibg{position:absolute;right:-12px;top:-12px;font-size:80px;opacity:.06;z-index:0;}
+
+/* profile */
+.phdr{background:linear-gradient(135deg,rgba(59,158,255,.1),rgba(0,212,200,.06));border:1px solid var(--border2);border-radius:16px;padding:24px;margin-bottom:16px;display:flex;gap:20px;align-items:flex-start;}
+.pem{width:68px;height:68px;border-radius:16px;flex-shrink:0;background:linear-gradient(135deg,var(--accent),var(--accent2));display:flex;align-items:center;justify-content:center;font-family:'Unbounded',sans-serif;font-size:18px;font-weight:800;color:#fff;box-shadow:0 8px 20px rgba(59,158,255,.3);}
+.pmgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;margin-top:12px;}
+.pm{background:var(--bg2);border-radius:9px;padding:10px 12px;}
+.pmk{font-size:9px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--muted2);margin-bottom:3px;}
+.pmv{font-size:12px;font-weight:600;}
+
+/* modal */
+.moverlay{position:fixed;inset:0;z-index:500;background:rgba(0,0,0,.7);backdrop-filter:blur(4px);display:none;align-items:center;justify-content:center;padding:20px;}
+.moverlay.on{display:flex;}
+.mbox{background:var(--card);border:1px solid var(--border2);border-radius:16px;width:100%;max-width:520px;max-height:90vh;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 40px 80px rgba(0,0,0,.6);}
+.mhd{padding:20px 24px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;}
+.mtitle{font-family:'Unbounded',sans-serif;font-size:13px;font-weight:700;}
+.mx{width:28px;height:28px;border-radius:6px;border:1px solid var(--border);background:none;cursor:pointer;color:var(--muted);font-size:15px;display:flex;align-items:center;justify-content:center;transition:.15s;}
+.mx:hover{background:var(--bg2);color:var(--text);}
+.mbod{padding:20px 24px;overflow-y:auto;flex:1;}
+.mft{padding:14px 24px;border-top:1px solid var(--border);display:flex;gap:8px;justify-content:flex-end;}
+
+/* toast */
+.twrap{position:fixed;bottom:18px;right:18px;z-index:999;display:flex;flex-direction:column-reverse;gap:6px;pointer-events:none;}
+.toast{background:var(--card2);border:1px solid var(--border2);border-radius:10px;padding:10px 14px;font-size:13px;font-weight:500;box-shadow:0 8px 20px rgba(0,0,0,.4);animation:tI .3s ease;pointer-events:auto;display:flex;align-items:center;gap:8px;}
+.toast.success{border-color:rgba(46,213,115,.3);background:rgba(46,213,115,.1);}
+.toast.error{border-color:rgba(255,71,87,.3);background:rgba(255,71,87,.1);}
+.toast.info{border-color:rgba(59,158,255,.3);background:rgba(59,158,255,.1);}
+@keyframes tI{from{transform:translateX(100%);opacity:0;}to{transform:none;opacity:1;}}
+
+/* misc */
+.pbar{position:fixed;top:0;left:0;height:3px;background:linear-gradient(90deg,var(--accent),var(--accent2));transition:width .4s;z-index:200;box-shadow:0 0 8px var(--accent);}
+.lov{position:fixed;inset:0;z-index:900;background:rgba(6,11,22,.85);display:none;align-items:center;justify-content:center;flex-direction:column;gap:12px;}
+.lov.on{display:flex;}
+.spin{width:38px;height:38px;border:3px solid var(--border2);border-top-color:var(--accent);border-radius:50%;animation:sp .8s linear infinite;}
+@keyframes sp{to{transform:rotate(360deg);}}
+.empty{text-align:center;padding:48px 20px;color:var(--muted);}
+.chip{display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:999px;font-size:11px;font-weight:600;}
+
+/* mobile */
+#mobScreen{display:none;position:fixed;inset:0;z-index:2000;background:var(--bg);flex-direction:column;align-items:center;justify-content:center;padding:30px;text-align:center;}
+
+/* Koch/Gram steps */
+.step-card{background:var(--card);border:1px solid var(--border);border-radius:13px;padding:14px 16px;display:flex;gap:13px;align-items:flex-start;margin-bottom:10px;}
+.step-num{width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:'Unbounded',sans-serif;font-weight:800;font-size:12px;color:#fff;flex-shrink:0;}
+.step-ok{background:linear-gradient(135deg,var(--ok),var(--accent2));}
+.step-gr{background:linear-gradient(135deg,var(--accent3),var(--accent));}
+.step-title{font-weight:700;font-size:13px;margin-bottom:2px;}
+.step-desc{font-size:12px;color:var(--muted);line-height:1.6;}
+</style>
+</head>
+<body>
+
+<div class="pbar" id="pbar" style="width:0%"></div>
+<div class="twrap" id="twrap"></div>
+<div class="lov" id="lov"><div class="spin"></div><div style="color:var(--muted);font-size:13px;" id="lov-txt">Загрузка...</div></div>
+
+<!-- ══ AUTH ══ -->
+<div id="authScreen">
+  <div class="agrid"></div><div class="aorb aorb1"></div><div class="aorb aorb2"></div>
+  <div class="abox">
+    <div class="alogo">
+      <div class="alogo-icon">🧫</div>
+      <h1>MicroAir Lab</h1>
+      <p id="a-sub" style="color:var(--muted);font-size:12px;margin-top:3px;">Система микробиологического анализа воздуха</p>
+    </div>
+    <div class="atabs">
+      <div class="atab on" id="tab-login" onclick="swTab('login')">Войти</div>
+      <div class="atab" id="tab-reg" onclick="swTab('reg')">Регистрация</div>
+    </div>
+    <div id="a-err" class="amsg aerr"></div>
+    <div id="a-ok" class="amsg aok"></div>
+
+    <div id="f-login">
+      <div class="fg"><label class="fl" id="l-email">Email</label><input class="fi" type="email" id="lEmail" placeholder="your@email.com"></div>
+      <div class="fg"><label class="fl" id="l-pass">Пароль</label><input class="fi" type="password" id="lPass" onkeydown="if(event.key==='Enter')doLogin()"></div>
+      <button class="bmain" id="loginBtn" onclick="doLogin()">Войти →</button>
+    </div>
+
+    <div id="f-reg" style="display:none">
+      <div class="fg"><label class="fl" id="l-name">Имя и фамилия</label><input class="fi" type="text" id="rName" placeholder="Иванов Иван"></div>
+      <div class="fg"><label class="fl" id="l-remail">Email</label><input class="fi" type="email" id="rEmail" placeholder="your@email.com"></div>
+      <div class="fg">
+        <label class="fl" id="l-role">Роль</label>
+        <select class="fi fi-sel" id="rRole">
+          <option value="student" id="ro-s">Ученик / Студент</option>
+          <option value="teacher" id="ro-t">Педагог</option>
+          <option value="researcher" id="ro-r">Исследователь</option>
+        </select>
+      </div>
+      <div class="fg"><label class="fl" id="l-rpass">Пароль (мин. 6 симв.)</label><input class="fi" type="password" id="rPass"></div>
+      <button class="bmain" id="regBtn" onclick="doReg()">Создать аккаунт →</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ VERIFY ══ -->
+<div id="verifyScreen" style="display:none;position:fixed;inset:0;z-index:1001;align-items:center;justify-content:center;background:var(--bg);">
+  <div style="text-align:center;max-width:400px;padding:40px;background:var(--card);border:1px solid var(--border2);border-radius:24px;">
+    <div style="font-size:52px;margin-bottom:16px;">📧</div>
+    <div style="font-family:'Unbounded',sans-serif;font-size:16px;font-weight:700;margin-bottom:10px;" id="v-title">Подтвердите email</div>
+    <div style="color:var(--muted);font-size:13px;line-height:1.7;margin-bottom:24px;" id="v-desc">Мы отправили письмо на ваш email. Перейдите по ссылке в письме для активации аккаунта.</div>
+    <button class="bmain" style="margin-bottom:10px;" onclick="checkVerify()" id="v-check">Я подтвердил →</button>
+    <br>
+    <button class="bsm" onclick="resendVerify()" id="v-resend" style="margin-top:8px;">Отправить повторно</button>
+    <br>
+    <button class="bsm" onclick="doLogout()" style="margin-top:8px;" id="v-logout">Выйти</button>
+  </div>
+</div>
+
+<!-- ══ APP ══ -->
+<div id="appShell">
+  <aside class="sidebar">
+    <div class="sb-logo">
+      <div class="lmark">🧫</div>
+      <div><div class="lt1">MicroAir Lab</div><div class="lt2">v4.0 Firebase</div></div>
+    </div>
+    <div class="upill" onclick="showPage('account')">
+      <div class="uav" id="sbAv">?</div>
+      <div style="flex:1;min-width:0;"><div class="uname" id="sbName">—</div><div class="urole" id="sbRole">—</div></div>
+    </div>
+    <!-- Language -->
+    <div class="langbar">
+      <button class="lbtn" id="lbRU" onclick="setLang('ru')">RU</button>
+      <button class="lbtn" id="lbEN" onclick="setLang('en')">EN</button>
+      <button class="lbtn" id="lbDE" onclick="setLang('de')">DE</button>
+    </div>
+    <!-- Season -->
+    <div class="season-toggle">
+      <button class="sbtn on" id="sWin" onclick="setSeason('winter')">❄️ <span id="s-win-lbl">Зима</span></button>
+      <button class="sbtn summer" id="sSum" onclick="setSeason('summer')">☀️ <span id="s-sum-lbl">Лето</span></button>
+    </div>
+
+    <div id="sbNav">
+      <!-- MAIN -->
+      <div class="nsec">
+        <div class="nsl-row"><span class="nsl" id="nsl-main">Главное</span><div class="narr"><button onclick="scNav(-80)">▲</button><button onclick="scNav(80)">▼</button></div></div>
+        <div class="ni on" data-p="dashboard" onclick="showPage('dashboard')"><span class="ni-ic">📊</span><span id="n-dash">Дашборд</span></div>
+        <div class="ni" data-p="schools" onclick="showPage('schools')"><span class="ni-ic">🏫</span><span id="n-schools">Школы</span><span class="nbadge" id="schoolsBadge">0</span></div>
+        <div class="ni" data-p="profile" onclick="showPage('profile')"><span class="ni-ic">📋</span><span id="n-profile">Профиль</span></div>
+      </div>
+      <!-- ANALYSIS -->
+      <div class="nsec">
+        <div class="nsl-row"><span class="nsl" id="nsl-anal">Анализ</span><div class="narr"><button onclick="scNav(-80)">▲</button><button onclick="scNav(80)">▼</button></div></div>
+        <div class="ni" data-p="calculator" onclick="showPage('calculator')"><span class="ni-ic">🔬</span><span id="n-calc">Калькулятор</span></div>
+        <div class="ni" data-p="history" onclick="showPage('history')"><span class="ni-ic">📈</span><span id="n-hist">История</span></div>
+      </div>
+      <!-- METHODS -->
+      <div class="nsec">
+        <div class="nsl-row"><span class="nsl" id="nsl-meth">Методы</span><div class="narr"><button onclick="scNav(-80)">▲</button><button onclick="scNav(80)">▼</button></div></div>
+        <div class="ni" data-p="koch" onclick="showPage('koch')"><span class="ni-ic">🧫</span><span id="n-koch">Метод Коха</span></div>
+        <div class="ni" data-p="gram" onclick="showPage('gram')"><span class="ni-ic">🎨</span><span id="n-gram">Окраска по Граму</span></div>
+      </div>
+      <!-- REFERENCE -->
+      <div class="nsec">
+        <div class="nsl-row"><span class="nsl" id="nsl-ref">Справка</span><div class="narr"><button onclick="scNav(-80)">▲</button><button onclick="scNav(80)">▼</button></div></div>
+        <div class="ni" data-p="scientists" onclick="showPage('scientists')"><span class="ni-ic">🧬</span><span id="n-sci">Учёные</span></div>
+        <div class="ni" data-p="creator" onclick="showPage('creator')"><span class="ni-ic">⭐</span><span id="n-creator">Создатель</span></div>
+      </div>
+      <!-- OWNER -->
+      <div class="nsec" id="ownerNav" style="display:none;">
+        <div class="nsl-row" style="padding-top:8px;"><span class="nsl" style="color:var(--warn);">⚡ OWNER</span></div>
+        <div class="ni" data-p="ownerpanel" onclick="showPage('ownerpanel')" style="border:1px solid rgba(255,165,2,.2);background:rgba(255,165,2,.05);"><span class="ni-ic">🛡</span><span id="n-owner">Панель владельца</span></div>
+      </div>
+    </div><!-- /sbNav -->
+
+    <div class="sb-bot">
+      <div class="ni" data-p="account" onclick="showPage('account')" style="margin-bottom:3px;"><span class="ni-ic">👤</span><span id="n-acc">Аккаунт</span></div>
+      <button class="blogout" onclick="doLogout()"><span>🚪</span><span id="n-logout">Выйти</span></button>
+    </div>
+  </aside>
+
+  <div class="main">
+    <header class="topbar">
+      <div class="tb-title" id="tbTitle">Дашборд</div>
+      <div class="tb-act" id="tbAct"></div>
+    </header>
+    <div class="pbody" id="pbody">
+
+      <!-- DASHBOARD -->
+      <div class="page on" id="page-dashboard">
+        <div class="stats">
+          <div class="scard" style="--gc:linear-gradient(90deg,var(--accent),var(--accent2))"><div class="sc-ic">🏫</div><div class="sc-val" id="ds1">0</div><div class="sc-lbl" id="ds1-l">Школ в базе</div></div>
+          <div class="scard" style="--gc:linear-gradient(90deg,#7c5cfc,#b066ff)"><div class="sc-ic">🔬</div><div class="sc-val" id="ds2">0</div><div class="sc-lbl" id="ds2-l">Расчётов</div></div>
+          <div class="scard" style="--gc:linear-gradient(90deg,var(--warn),#ff6b35)"><div class="sc-ic">⚠️</div><div class="sc-val" id="ds3">—</div><div class="sc-lbl" id="ds3-l">Макс. загрязнение</div></div>
+          <div class="scard" style="--gc:linear-gradient(90deg,var(--ok),#00b894)"><div class="sc-ic">👥</div><div class="sc-val" id="ds4">—</div><div class="sc-lbl" id="ds4-l">Участников</div></div>
+        </div>
+        <div class="norm-indicator norm-winter" id="normIndicator">❄️ <span id="normTxt">Зимняя норма: 7 000 микроорг./м³</span></div>
+        <div class="stitle" id="dash-chart-title">Данные Школы № 210</div>
+        <div class="card">
+          <div id="dashChart">
+            <div class="mcrow"><div class="mclbl" id="dc-lbl1">Класс</div><div class="mctrack"><div class="mcfill" id="dc1" style="width:0%;background:linear-gradient(90deg,#dc2626,#991b1b);">16 220</div><div class="mcnorm" style="left:43%"></div></div></div>
+            <div class="mcrow"><div class="mclbl" id="dc-lbl2">Столовая</div><div class="mctrack"><div class="mcfill" id="dc2" style="width:0%;background:linear-gradient(90deg,#ef4444,#dc2626);">13 499</div><div class="mcnorm" style="left:43%"></div></div></div>
+            <div class="mcrow"><div class="mclbl" id="dc-lbl3">Спортзал</div><div class="mctrack"><div class="mcfill" id="dc3" style="width:0%;background:linear-gradient(90deg,#f59e0b,#ef4444);">9 918</div><div class="mcnorm" style="left:43%"></div></div></div>
+            <div class="mcrow"><div class="mclbl" id="dc-lbl4">Библиотека</div><div class="mctrack"><div class="mcfill" id="dc4" style="width:0%;background:linear-gradient(90deg,#10b981,#06b6d4);">7 253</div><div class="mcnorm" style="left:43%"></div></div></div>
+          </div>
+          <div style="margin-top:9px;font-size:11px;color:var(--muted);display:flex;align-items:center;gap:5px;" id="norm-hint">
+            <div style="width:11px;height:2px;background:var(--ok);display:inline-block;border-radius:1px;"></div>
+            <span id="norm-hint-txt">Зелёная линия = норма 7 000 / м³ (зима)</span>
+          </div>
+        </div>
+        <div class="stitle" id="dash-recent-title">Последние расчёты</div>
+        <div id="recentCalcs" class="card" style="color:var(--muted);font-size:13px;" id="rc-empty">Расчёты появятся здесь</div>
+      </div>
+
+      <!-- SCHOOLS -->
+      <div class="page" id="page-schools"><div class="sgrid" id="schoolsGrid"></div></div>
+
+      <!-- PROFILE -->
+      <div class="page" id="page-profile"><div id="profileContent"><div class="empty">🏫<br><br><span id="p-choose">Выберите школу из списка</span></div></div></div>
+
+      <!-- CALCULATOR -->
+      <div class="page" id="page-calculator">
+        <div class="clayout">
+          <div>
+            <div class="card">
+              <div class="fdisp">
+                <div style="font-size:10px;color:var(--muted2);letter-spacing:.1em;text-transform:uppercase;margin-bottom:6px;" id="cf-lbl">Формула Омелянского</div>
+                <div class="fbig">Х = а × 100 × 5 × 100 / (S × T)</div>
+                <div class="fleg">
+                  <div class="fleg-i"><span>а</span> — <span id="fl-a">колонии</span></div>
+                  <div class="fleg-i"><span>S</span> — <span id="fl-s">площадь, см²</span></div>
+                  <div class="fleg-i"><span>T</span> — <span id="fl-t">время, мин</span></div>
+                  <div class="fleg-i"><span>Х</span> — <span id="fl-x">микроорг./м³</span></div>
+                </div>
+              </div>
+              <!-- season selector inside calc -->
+              <div style="margin-bottom:14px;padding:10px 14px;background:var(--bg2);border-radius:10px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+                <span style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;" id="cs-lbl">Сезон:</span>
+                <button class="bsm" id="cs-win" onclick="setSeason('winter')" style="font-size:11px;">❄️ <span id="cs-win-txt">Зима (норма 7 000)</span></button>
+                <button class="bsm" id="cs-sum" onclick="setSeason('summer')" style="font-size:11px;">☀️ <span id="cs-sum-txt">Лето (норма 2 500)</span></button>
+              </div>
+              <div class="fg"><label class="fl" id="cl-school">Школа</label><select class="fi fi-sel" id="calcSchool"></select></div>
+              <div class="fg"><label class="fl" id="cl-room">Помещение</label><input class="fi" id="calcRoom" placeholder="Учебный кабинет..."></div>
+              <div class="cgrid">
+                <div class="fg"><label class="fl" id="cl-c1">🧫 Чашка 1</label><input class="fi" type="number" id="c1" min="0" oninput="upAvg()"></div>
+                <div class="fg"><label class="fl" id="cl-c2">🧫 Чашка 2</label><input class="fi" type="number" id="c2" min="0" oninput="upAvg()"></div>
+                <div class="fg"><label class="fl" id="cl-c3">🧫 Чашка 3</label><input class="fi" type="number" id="c3" min="0" oninput="upAvg()"></div>
+                <div class="fg"><label class="fl" id="cl-s">📐 Площадь S (см²)</label><input class="fi" type="number" id="sA" value="78.5"></div>
+                <div class="fg"><label class="fl" id="cl-t">⏱ Время T (мин)</label><input class="fi" type="number" id="tT" value="5"></div>
+                <div class="fg"><label class="fl" id="cl-avg">∑ Среднее а</label><input class="fi" id="avgD" readonly style="background:rgba(59,158,255,.06);border-color:rgba(59,158,255,.2);"></div>
+              </div>
+              <div style="display:flex;gap:8px;"><button class="bsm primary" style="flex:1;padding:11px;" id="calcBtn" onclick="doCalc()">⚡ Рассчитать</button><button class="bsm" id="resetBtn" onclick="clearCalc()">Сбросить</button></div>
+              <div class="rbox" id="rbox">
+                <div style="font-size:10px;color:var(--muted);letter-spacing:.1em;text-transform:uppercase;margin-bottom:4px;" id="r-lbl">Результат</div>
+                <div class="rbig" id="rVal">0</div>
+                <div class="runit" id="r-unit">микроорганизмов / м³</div>
+                <div class="rverdict" id="rVerdict"></div>
+                <div style="margin-top:10px;font-size:12px;color:var(--muted);" id="rComp"></div>
+                <button class="bsm primary" style="margin-top:12px;" id="saveBtn" onclick="saveCalc()">💾 Сохранить</button>
+              </div>
+            </div>
+          </div>
+          <div>
+            <div class="card" style="margin-bottom:13px;">
+              <div class="stitle" style="margin-top:0;font-size:11px;" id="norm-table-title">Нормы загрязнённости</div>
+              <table class="nmini" id="normTable">
+                <tr><th id="nt-grade">Оценка</th><th id="nt-summer">Лето</th><th id="nt-winter">Зима</th></tr>
+                <tr><td id="nt-clean">✅ Чистый</td><td style="color:var(--ok)">≤ 1 500</td><td style="color:var(--ok)">≤ 4 500</td></tr>
+                <tr><td id="nt-mid">⚠️ Умеренный</td><td style="color:var(--warn)">≤ 2 500</td><td style="color:var(--warn)">≤ 7 000</td></tr>
+                <tr><td id="nt-bad">❌ Загрязнён</td><td style="color:var(--danger)">> 2 500</td><td style="color:var(--danger)">> 7 000</td></tr>
+              </table>
+              <div style="margin-top:8px;padding:8px 10px;border-radius:8px;font-size:11px;color:var(--muted);border:1px solid var(--border);" id="cur-norm-box">
+                <span id="cur-norm-txt">Текущая норма: ❄️ 7 000 / м³</span>
+              </div>
+            </div>
+            <div class="card">
+              <div class="stitle" style="margin-top:0;font-size:11px;" id="hist-title-side">История</div>
+              <div id="calcHist"><div style="color:var(--muted);font-size:12px;text-align:center;padding:14px;" id="hist-empty-txt">Пусто</div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- HISTORY -->
+      <div class="page" id="page-history"><div id="histFull"></div></div>
+
+      <!-- KOCH -->
+      <div class="page" id="page-koch">
+        <div style="max-width:820px;">
+          <div style="background:linear-gradient(135deg,rgba(16,185,129,.08),rgba(6,182,212,.05));border:1px solid rgba(16,185,129,.2);border-radius:16px;padding:24px;margin-bottom:16px;display:flex;gap:16px;align-items:flex-start;">
+            <div style="font-size:42px;flex-shrink:0;">🧫</div>
+            <div>
+              <div style="font-family:'Unbounded',sans-serif;font-size:17px;font-weight:700;margin-bottom:4px;" id="koch-title">Метод Коха (Седиментационный)</div>
+              <div style="color:var(--muted);font-size:13px;line-height:1.7;" id="koch-desc">Самый старый метод анализа воздуха. Разработан Робертом Кохом. Основан на естественном оседании микроорганизмов на питательную среду.</div>
+            </div>
+          </div>
+          <div class="stitle" style="margin-top:0;" id="koch-steps-t">Пошаговый протокол</div>
+          <div class="step-card"><div class="step-num step-ok">1</div><div><div class="step-title" id="ks1-t">🧪 Подготовка</div><div class="step-desc" id="ks1-d">Стерильные чашки Петри с МПА (мясо-пептонный агар). Подписать каждую: помещение, номер повторности, дата.</div></div></div>
+          <div class="step-card"><div class="step-num step-ok">2</div><div><div class="step-title" id="ks2-t">📍 Расстановка</div><div class="step-desc" id="ks2-d">На высоте 1–1,5 м от пола в репрезентативных точках. Минимум 3 повторности на каждое помещение.</div></div></div>
+          <div class="step-card"><div class="step-num step-ok">3</div><div><div class="step-title" id="ks3-t">⏱ Экспозиция 5 минут</div><div class="step-desc" id="ks3-d">Снять крышки ровно на 5 минут. Не двигаться рядом — завихрения воздуха искажают результат.</div></div></div>
+          <div class="step-card"><div class="step-num step-ok">4</div><div><div class="step-title" id="ks4-t">🔒 Закрытие и транспортировка</div><div class="step-desc" id="ks4-d">Закрыть крышками, обернуть скотчем. Доставить в термостат не позднее 1–2 часов после экспозиции.</div></div></div>
+          <div class="step-card"><div class="step-num step-ok">5</div><div><div class="step-title" id="ks5-t">🌡 Инкубация в термостате</div><div class="step-desc" id="ks5-d">37°C — 24 часа (основной рост бактерий). Затем при комнатной температуре ещё 24 часа для выявления мезофильных организмов.</div></div></div>
+          <div class="step-card"><div class="step-num step-ok">6</div><div><div class="step-title" id="ks6-t">🔢 Подсчёт колоний</div><div class="step-desc" id="ks6-d">Подсчитать все видимые колонии через лупу. Записать для каждой чашки. Среднее из трёх = значение «а» для формулы Омелянского.</div></div></div>
+          <button class="bsm primary" style="padding:10px 20px;margin-top:4px;" onclick="showPage('calculator')" id="koch-btn">→ Перейти к Калькулятору</button>
+        </div>
+      </div>
+
+      <!-- GRAM -->
+      <div class="page" id="page-gram">
+        <div style="max-width:820px;">
+          <div style="background:linear-gradient(135deg,rgba(124,92,252,.08),rgba(59,158,255,.05));border:1px solid rgba(124,92,252,.2);border-radius:16px;padding:24px;margin-bottom:16px;display:flex;gap:16px;align-items:flex-start;">
+            <div style="font-size:42px;flex-shrink:0;">🎨</div>
+            <div>
+              <div style="font-family:'Unbounded',sans-serif;font-size:17px;font-weight:700;margin-bottom:4px;" id="gram-title">Окраска по методу Грама</div>
+              <div style="color:var(--muted);font-size:13px;line-height:1.7;" id="gram-desc">Дифференциальный метод 1884 года. Разделяет бактерии на грамположительные и грамотрицательные по строению клеточной стенки.</div>
+            </div>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:13px;margin-bottom:18px;">
+            <div style="background:var(--card);border:2px solid rgba(124,92,252,.3);border-radius:13px;padding:16px;">
+              <div style="font-family:'Unbounded',sans-serif;font-size:11px;font-weight:700;color:var(--accent3);margin-bottom:9px;" id="gram-pos">🟣 ГРАМПОЛОЖИТЕЛЬНЫЕ</div>
+              <div style="font-size:12px;color:var(--muted);line-height:1.7;margin-bottom:7px;" id="gram-pos-desc">Окрашиваются в <strong style="color:#9b59b6;">фиолетовый</strong>. Толстая клеточная стенка удерживает краситель.</div>
+              <div style="font-size:11px;color:var(--muted);">Staphylococcus, Bacillus</div>
+              <div style="margin-top:8px;background:rgba(124,92,252,.1);border-radius:6px;padding:6px 10px;font-size:11px;color:var(--accent3);" id="gram-found">⚠️ Обнаружены в Школе №210</div>
+            </div>
+            <div style="background:var(--card);border:2px solid rgba(239,68,68,.3);border-radius:13px;padding:16px;">
+              <div style="font-family:'Unbounded',sans-serif;font-size:11px;font-weight:700;color:var(--danger);margin-bottom:9px;" id="gram-neg">🔴 ГРАМОТРИЦАТЕЛЬНЫЕ</div>
+              <div style="font-size:12px;color:var(--muted);line-height:1.7;margin-bottom:7px;" id="gram-neg-desc">Окрашиваются в <strong style="color:#e74c3c;">розовый</strong>. Тонкая стенка + внешняя мембрана не удерживают краситель.</div>
+              <div style="font-size:11px;color:var(--muted);">E. coli, Pseudomonas</div>
+            </div>
+          </div>
+          <div class="stitle" style="margin-top:0;" id="gram-steps-t">Протокол окраски</div>
+          <div class="step-card"><div class="step-num step-gr">1</div><div><div class="step-title" id="gs1-t">💜 Кристаллвиолет (2–3 мин)</div><div class="step-desc" id="gs1-d">Нанести краситель через фильтровальную бумажку. Метод Синёва: готовые бумажки с 1% раствором кристаллвиолета.</div></div></div>
+          <div class="step-card"><div class="step-num step-gr">2</div><div><div class="step-title" id="gs2-t">🟫 Раствор Люголя (2 мин)</div><div class="step-desc" id="gs2-d">Фиксирует комплекс «краситель–клеточная стенка». Мазок окрашивается в тёмно-фиолетовый.</div></div></div>
+          <div class="step-card"><div class="step-num step-gr">3</div><div><div class="step-title" id="gs3-t">🥃 Обесцвечивание спиртом 96% (30–60 сек)</div><div class="step-desc" id="gs3-d">Промыть спиртом — грамотрицательные теряют цвет. Немедленно промыть водой, иначе обесцветятся все.</div></div></div>
+          <div class="step-card"><div class="step-num step-gr">4</div><div><div class="step-title" id="gs4-t">🔴 Докраска фуксином (2–3 мин)</div><div class="step-desc" id="gs4-d">Обесцвеченные грамотрицательные прокрашиваются в розово-красный. Промыть водой, подсушить.</div></div></div>
+          <div class="step-card"><div class="step-num step-gr">5</div><div><div class="step-title" id="gs5-t">🔭 Микроскопия (×90–100, масляный объектив)</div><div class="step-desc" id="gs5-d">Нанести каплю иммерсионного масла. Оценить форму клеток (кокки/бациллы) и цвет окраски.</div></div></div>
+          <div style="margin-top:14px;padding:14px 16px;background:rgba(46,213,115,.07);border:1px solid rgba(46,213,115,.2);border-radius:12px;">
+            <div style="font-weight:700;font-size:13px;margin-bottom:6px;" id="gram-result-title">📊 Результат исследования (Школа № 210)</div>
+            <div style="font-size:12px;color:var(--muted);line-height:1.7;" id="gram-result-desc">Выявлены грамположительные кокки и бациллы — типичные обитатели воздуха закрытых помещений, способные вызывать инфекции дыхательных путей.</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- SCIENTISTS -->
+      <div class="page" id="page-scientists">
+        <div style="margin-bottom:16px;color:var(--muted);font-size:13px;line-height:1.7;max-width:740px;" id="sci-intro">Учёные, заложившие фундамент микробиологического анализа воздуха. Их методы применяются в данном исследовании.</div>
+        <div class="scigrid" id="sciGrid"></div>
+      </div>
+
+      <!-- CREATOR -->
+      <div class="page" id="page-creator">
+        <div style="max-width:780px;">
+          <div style="position:relative;background:linear-gradient(135deg,rgba(59,158,255,.09),rgba(0,212,200,.06),rgba(124,92,252,.08));border:1px solid var(--border2);border-radius:24px;overflow:hidden;padding:40px 36px;margin-bottom:16px;">
+            <div style="position:absolute;width:320px;height:320px;border-radius:50%;background:radial-gradient(circle,rgba(59,158,255,.07),transparent);top:-120px;right:-70px;pointer-events:none;"></div>
+            <div style="display:flex;gap:28px;align-items:flex-start;position:relative;z-index:1;flex-wrap:wrap;">
+              <div style="flex-shrink:0;">
+                <div style="width:96px;height:96px;border-radius:50%;background:linear-gradient(135deg,#0f2d5c,#1a5fa8,#3b9eff,#00d4c8);display:flex;align-items:center;justify-content:center;font-family:'Unbounded',sans-serif;font-size:28px;font-weight:800;color:#fff;box-shadow:0 12px 36px rgba(59,158,255,.45),0 0 0 4px rgba(59,158,255,.15);position:relative;letter-spacing:-2px;">RH
+                  <div style="position:absolute;bottom:5px;right:5px;width:18px;height:18px;border-radius:50%;background:var(--ok);border:2px solid var(--bg);display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;">✓</div>
+                </div>
+              </div>
+              <div style="flex:1;min-width:250px;">
+                <div style="display:flex;align-items:center;gap:10px;margin-bottom:7px;flex-wrap:wrap;">
+                  <div style="font-family:'Unbounded',sans-serif;font-size:24px;font-weight:800;background:linear-gradient(135deg,#fff 20%,var(--accent) 60%,var(--accent2));-webkit-background-clip:text;-webkit-text-fill-color:transparent;">Rahmanov Hasan</div>
+                  <span style="background:linear-gradient(135deg,rgba(255,165,2,.2),rgba(255,100,0,.15));border:1px solid rgba(255,165,2,.4);color:var(--warn);border-radius:999px;padding:4px 11px;font-size:10px;font-weight:800;letter-spacing:.1em;-webkit-text-fill-color:var(--warn);">⭐ FOUNDER</span>
+                </div>
+                <div style="font-size:13px;color:var(--accent2);font-weight:600;margin-bottom:13px;" id="cr-subtitle">Основатель и разработчик · MicroAir Lab · Ташкент, 2026</div>
+                <div style="font-size:13px;color:var(--muted);line-height:1.85;margin-bottom:17px;" id="cr-desc">Автор исследовательской работы <strong style="color:var(--text);">«Микробиологический анализ воздуха школьных помещений»</strong> и создатель данной цифровой платформы. Провёл полевые эксперименты в четырёх помещениях Школы № 210 г. Ташкента, применив методы Коха, Омелянского и окраску по Граму.</div>
+                <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:16px;">
+                  <div style="background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:10px;padding:11px;"><div style="font-size:8px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--muted2);margin-bottom:3px;" id="cr-f1">Сфера</div><div style="font-size:11px;font-weight:600;" id="cr-v1">Микробиология воздуха</div></div>
+                  <div style="background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:10px;padding:11px;"><div style="font-size:8px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--muted2);margin-bottom:3px;" id="cr-f2">Год запуска</div><div style="font-size:11px;font-weight:600;">2026 · Ташкент</div></div>
+                  <div style="background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:10px;padding:11px;"><div style="font-size:8px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--muted2);margin-bottom:3px;" id="cr-f3">Организация</div><div style="font-size:11px;font-weight:600;">РХТУ Менделеева</div></div>
+                </div>
+                <div style="background:rgba(255,255,255,.03);border-left:3px solid var(--accent2);border-radius:0 10px 10px 0;padding:12px 15px;font-size:12px;font-style:italic;color:var(--muted);line-height:1.7;margin-bottom:14px;" id="cr-quote">«Мы не можем увидеть бактерии. Но это не значит, что их нет. Знание — первый шаг к действию.»</div>
+                <div style="display:flex;gap:6px;flex-wrap:wrap;">
+                  <span style="background:rgba(59,158,255,.1);border:1px solid rgba(59,158,255,.2);color:var(--accent);border-radius:999px;padding:4px 11px;font-size:11px;font-weight:600;" id="cr-tag1">🔬 Исследователь</span>
+                  <span style="background:rgba(0,212,200,.1);border:1px solid rgba(0,212,200,.2);color:var(--accent2);border-radius:999px;padding:4px 11px;font-size:11px;font-weight:600;" id="cr-tag2">💻 Разработчик</span>
+                  <span style="background:rgba(124,92,252,.1);border:1px solid rgba(124,92,252,.2);color:var(--accent3);border-radius:999px;padding:4px 11px;font-size:11px;font-weight:600;">🏫 Школа №210</span>
+                  <span style="background:rgba(46,213,115,.1);border:1px solid rgba(46,213,115,.2);color:var(--ok);border-radius:999px;padding:4px 11px;font-size:11px;font-weight:600;">📍 Ташкент</span>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="card" style="display:flex;gap:12px;align-items:flex-start;">
+            <div style="font-size:18px;flex-shrink:0;">🙏</div>
+            <div><div style="font-weight:700;margin-bottom:5px;" id="cr-thanks-title">Благодарности</div><div style="font-size:12px;color:var(--muted);line-height:1.8;" id="cr-thanks-desc"><strong style="color:var(--text);">Иванова М.А.</strong> и <strong style="color:var(--text);">Ершова З.А.</strong> — научные руководители (проект «Российский учитель за рубежом»).<br><strong style="color:var(--text);">Филиал РХТУ им. Д.И. Менделеева</strong> — лабораторные помещения и оборудование.</div></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- OWNER PANEL -->
+      <div class="page" id="page-ownerpanel">
+        <div style="max-width:940px;">
+          <div style="background:linear-gradient(135deg,rgba(255,165,2,.1),rgba(255,100,0,.07));border:1px solid rgba(255,165,2,.25);border-radius:16px;padding:20px;margin-bottom:16px;display:flex;gap:13px;align-items:center;">
+            <div style="font-size:32px;">🛡</div>
+            <div><div style="font-family:'Unbounded',sans-serif;font-size:16px;font-weight:700;color:var(--warn);" id="op-title">Owner Control Panel</div><div style="font-size:12px;color:var(--muted);margin-top:2px;" id="op-sub">Полный контроль. Реальные данные из Firebase.</div></div>
+          </div>
+          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:11px;margin-bottom:18px;">
+            <div class="card" style="text-align:center;"><div style="font-family:'Unbounded',sans-serif;font-size:24px;font-weight:700;color:var(--accent);" id="op1">—</div><div style="font-size:11px;color:var(--muted);margin-top:3px;" id="op1-l">Пользователей</div></div>
+            <div class="card" style="text-align:center;"><div style="font-family:'Unbounded',sans-serif;font-size:24px;font-weight:700;color:var(--accent3);" id="op2">—</div><div style="font-size:11px;color:var(--muted);margin-top:3px;" id="op2-l">Школ</div></div>
+            <div class="card" style="text-align:center;"><div style="font-family:'Unbounded',sans-serif;font-size:24px;font-weight:700;color:var(--ok);" id="op3">—</div><div style="font-size:11px;color:var(--muted);margin-top:3px;" id="op3-l">Расчётов</div></div>
+          </div>
+          <div class="stitle" id="op-users-title">Пользователи системы</div>
+          <div class="card"><div id="ownerUsers" style="color:var(--muted);font-size:13px;">Загрузка...</div></div>
+          <div class="stitle" style="margin-top:18px;" id="op-danger-title">⚠️ Опасная зона</div>
+          <div style="background:rgba(255,71,87,.05);border:1px solid rgba(255,71,87,.2);border-radius:13px;padding:16px;display:flex;gap:9px;flex-wrap:wrap;">
+            <button class="bsm danger" id="op-delcalcs" onclick="ownerDelCalcs()">🗑 Очистить расчёты</button>
+            <button class="bsm danger" id="op-resetsch" onclick="ownerResetSchools()">🏫 Сбросить школы</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ACCOUNT -->
+      <div class="page" id="page-account">
+        <div style="max-width:640px;">
+          <div style="background:linear-gradient(135deg,rgba(59,158,255,.1),rgba(124,92,252,.08));border:1px solid var(--border2);border-radius:16px;padding:24px;margin-bottom:14px;display:flex;gap:16px;align-items:center;">
+            <div id="accAv" style="width:66px;height:66px;border-radius:50%;background:linear-gradient(135deg,var(--accent3),var(--accent));display:flex;align-items:center;justify-content:center;font-family:'Unbounded',sans-serif;font-size:24px;font-weight:800;color:#fff;flex-shrink:0;box-shadow:0 8px 20px rgba(124,92,252,.3);">?</div>
+            <div style="flex:1;">
+              <div style="font-family:'Unbounded',sans-serif;font-size:18px;font-weight:700;margin-bottom:3px;" id="accName">—</div>
+              <div style="color:var(--muted);font-size:12px;margin-bottom:5px;" id="accEmail">—</div>
+              <span class="chip" style="background:rgba(59,158,255,.12);color:var(--accent);border:1px solid rgba(59,158,255,.2);" id="accRoleChip">—</span>
+            </div>
+          </div>
+          <div class="card" style="margin-bottom:12px;">
+            <div class="stitle" style="margin-top:0;font-size:11px;" id="acc-edit-title">✏️ Редактировать профиль</div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+              <div class="fg" style="margin-bottom:0;"><label class="fl" id="acc-nl">Имя</label><input class="fi" id="accEditName"></div>
+              <div class="fg" style="margin-bottom:0;">
+                <label class="fl" id="acc-rl">Роль</label>
+                <select class="fi fi-sel" id="accEditRole">
+                  <option value="student" id="acc-ro-s">Ученик</option>
+                  <option value="teacher" id="acc-ro-t">Педагог</option>
+                  <option value="researcher" id="acc-ro-r">Исследователь</option>
+                </select>
+              </div>
+            </div>
+            <button class="bsm primary" style="margin-top:12px;" id="accSaveBtn" onclick="saveProfile()">💾 Сохранить</button>
+          </div>
+          <div class="card" style="margin-bottom:12px;">
+            <div class="stitle" style="margin-top:0;font-size:11px;" id="acc-stats-title">📊 Статистика</div>
+            <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:9px;">
+              <div style="background:var(--bg2);border-radius:9px;padding:12px;text-align:center;"><div style="font-family:'Unbounded',sans-serif;font-size:18px;font-weight:700;color:var(--accent);" id="as1">0</div><div style="font-size:10px;color:var(--muted);margin-top:3px;" id="as1-l">Школ</div></div>
+              <div style="background:var(--bg2);border-radius:9px;padding:12px;text-align:center;"><div style="font-family:'Unbounded',sans-serif;font-size:18px;font-weight:700;color:var(--accent3);" id="as2">0</div><div style="font-size:10px;color:var(--muted);margin-top:3px;" id="as2-l">Расчётов</div></div>
+              <div style="background:var(--bg2);border-radius:9px;padding:12px;text-align:center;"><div style="font-family:'Unbounded',sans-serif;font-size:18px;font-weight:700;color:var(--ok);" id="as3">0</div><div style="font-size:10px;color:var(--muted);margin-top:3px;" id="as3-l">Дней</div></div>
+            </div>
+          </div>
+          <div style="background:rgba(255,71,87,.05);border:1px solid rgba(255,71,87,.2);border-radius:16px;padding:20px;">
+            <div style="font-family:'Unbounded',sans-serif;font-size:12px;font-weight:700;color:var(--danger);margin-bottom:13px;" id="acc-danger-title">⚠️ Опасная зона</div>
+            <div style="display:flex;gap:11px;flex-wrap:wrap;">
+              <div style="flex:1;min-width:200px;">
+                <div style="font-size:13px;font-weight:600;margin-bottom:2px;" id="acc-out-title">Выйти</div>
+                <div style="font-size:12px;color:var(--muted);margin-bottom:8px;" id="acc-out-desc">Сессия завершится. Данные сохранятся.</div>
+                <button class="bsm" style="border-color:rgba(255,165,2,.4);color:var(--warn);" id="acc-out-btn" onclick="doLogout()">🚪 Выйти</button>
+              </div>
+              <div style="width:1px;background:rgba(255,71,87,.15);"></div>
+              <div style="flex:1;min-width:200px;">
+                <div style="font-size:13px;font-weight:600;margin-bottom:2px;color:var(--danger);" id="acc-del-title">Удалить аккаунт</div>
+                <div style="font-size:12px;color:var(--muted);margin-bottom:8px;" id="acc-del-desc">Удалится навсегда из Firebase.</div>
+                <button class="bsm danger" id="acc-del-btn" onclick="deleteAcct()">🗑 Удалить аккаунт</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /pbody -->
+  </div>
+</div>
+
+<!-- MODAL SCHOOL -->
+<div class="moverlay" id="schoolModal">
+  <div class="mbox">
+    <div class="mhd"><div class="mtitle" id="smTitle">Добавить школу</div><button class="mx" onclick="closeM('schoolModal')">✕</button></div>
+    <div class="mbod">
+      <div class="fg"><label class="fl" id="ml-num">Номер</label><input class="fi" id="mNum" placeholder="210"></div>
+      <div class="fg"><label class="fl" id="ml-name">Полное название</label><input class="fi" id="mName"></div>
+      <div class="fg"><label class="fl" id="ml-city">Город / Район</label><input class="fi" id="mCity"></div>
+      <div class="fg"><label class="fl" id="ml-addr">Адрес</label><input class="fi" id="mAddr"></div>
+      <div class="fg"><label class="fl" id="ml-dir">Директор</label><input class="fi" id="mDir"></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+        <div class="fg"><label class="fl" id="ml-st">Учеников</label><input class="fi" type="number" id="mStudents"></div>
+        <div class="fg"><label class="fl" id="ml-yr">Год постройки</label><input class="fi" type="number" id="mYear"></div>
+      </div>
+      <div class="fg"><label class="fl" id="ml-type">Тип</label>
+        <select class="fi fi-sel" id="mType">
+          <option id="mt1">Общеобразовательная школа</option>
+          <option id="mt2">Гимназия</option>
+          <option id="mt3">Лицей</option>
+          <option id="mt4">Специализированная школа</option>
+        </select>
+      </div>
+      <div class="fg"><label class="fl" id="ml-vent">Вентиляция</label>
+        <select class="fi fi-sel" id="mVent">
+          <option value="natural" id="mv1">Естественная</option>
+          <option value="mechanic" id="mv2">Механическая</option>
+          <option value="combined" id="mv3">Комбинированная</option>
+          <option value="none" id="mv4">Отсутствует</option>
+        </select>
+      </div>
+      <div class="fg"><label class="fl" id="ml-notes">Примечания</label><input class="fi" id="mNotes"></div>
+    </div>
+    <div class="mft"><button class="bsm" id="ml-cancel" onclick="closeM('schoolModal')">Отмена</button><button class="bsm primary" id="ml-save" onclick="saveSchool()">💾 Сохранить</button></div>
+  </div>
+</div>
+
+<!-- MOBILE SCREEN -->
+<div id="mobScreen" style="display:none;position:fixed;inset:0;z-index:2000;background:var(--bg);flex-direction:column;align-items:center;justify-content:center;padding:30px;text-align:center;">
+  <div style="font-size:50px;margin-bottom:16px;">📱</div>
+  <div style="font-family:'Unbounded',sans-serif;font-size:17px;font-weight:700;margin-bottom:9px;background:linear-gradient(135deg,#fff,var(--accent));-webkit-background-clip:text;-webkit-text-fill-color:transparent;" id="mob-title">MicroAir Lab</div>
+  <div style="font-size:13px;color:var(--muted);margin-bottom:18px;line-height:1.7;max-width:290px;" id="mob-desc">Платформа оптимизирована для компьютера.</div>
+  <div class="card" style="max-width:310px;text-align:left;margin-bottom:18px;">
+    <div style="font-size:12px;font-weight:700;margin-bottom:8px;" id="mob-avail">📌 Доступно:</div>
+    <div style="font-size:12px;color:var(--ok);margin-bottom:4px;" id="mob-reg">✅ Регистрация</div>
+    <div style="font-size:12px;color:var(--muted);" id="mob-no">❌ Анализ данных</div>
+  </div>
+  <button id="mobBypass" style="display:none;padding:9px 16px;border:1px solid var(--warn);background:rgba(255,165,2,.1);color:var(--warn);border-radius:9px;font-weight:700;cursor:pointer;font-family:'Golos Text',sans-serif;font-size:12px;" onclick="mobBypass()">⚡ Owner: войти</button>
+</div>
+
+<!-- ══ FIREBASE + APP JS ══ -->
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.12.1/firebase-app.js";
+import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut,
+  onAuthStateChanged, deleteUser, updateProfile, sendEmailVerification, reload
+} from "https://www.gstatic.com/firebasejs/12.12.1/firebase-auth.js";
+import { getFirestore, collection, doc, setDoc, getDoc, getDocs, addDoc,
+  deleteDoc, updateDoc, query, orderBy, limit, serverTimestamp
+} from "https://www.gstatic.com/firebasejs/12.12.1/firebase-firestore.js";
+
+const fbCfg = {
+  apiKey:"AIzaSyDmBRInUyHjuGeFhrGOX21NjpaWiC0ztmA",
+  authDomain:"microair-lab.firebaseapp.com",
+  projectId:"microair-lab",
+  storageBucket:"microair-lab.firebasestorage.app",
+  messagingSenderId:"140984558563",
+  appId:"1:140984558563:web:0a62c6ae9a527d1e28b6d6"
+};
+const fb = initializeApp(fbCfg);
+const auth = getAuth(fb);
+const db = getFirestore(fb);
+
+// ── OWNER (obfuscated) ──
+const _ok=['cmFobWFub3ZoMjAw','QGdtYWls','LmNvbQ=='];
+function isOw(e){try{return(atob(_ok[0])+atob(_ok[1])+atob(_ok[2]))===e.toLowerCase().trim();}catch{return false;}}
+
+let CU=null, CD=null, editSid=null, lastCalc=null, selSchool=null;
+
+// ── SEASON ──
+let season = localStorage.getItem('mal_season')||'winter';
+// norms: clean / mid boundary
+const NORMS = {winter:{clean:4500,mid:7000}, summer:{clean:1500,mid:2500}};
+function getNorm(){return NORMS[season].mid;}
+
+// ── TOAST ──
+window.toast=function(msg,type='info'){
+  const el=document.createElement('div');
+  el.className=`toast ${type}`;
+  el.innerHTML=`${type==='success'?'✅':type==='error'?'❌':'ℹ️'} ${msg}`;
+  document.getElementById('twrap').appendChild(el);
+  setTimeout(()=>{el.style.animation='tI .3s ease reverse';setTimeout(()=>el.remove(),300);},3200);
+};
+function lov(show,txt=''){
+  document.getElementById('lov').classList.toggle('on',show);
+  if(txt)document.getElementById('lov-txt').textContent=txt;
+}
+
+// ══════════ I18N ══════════
+const TT={
+ru:{
+  // Auth
+  tab_login:'Войти',tab_reg:'Регистрация',
+  a_sub:'Система микробиологического анализа воздуха',
+  l_email:'Email',l_pass:'Пароль',l_name:'Имя и фамилия',l_role:'Роль',l_rpass:'Пароль (мин. 6 симв.)',
+  login_btn:'Войти →',reg_btn:'Создать аккаунт →',
+  ro_s:'Ученик / Студент',ro_t:'Педагог',ro_r:'Исследователь',
+  // Verify
+  v_title:'Подтвердите email',
+  v_desc:'Мы отправили письмо на ваш email. Перейдите по ссылке в письме для активации аккаунта.',
+  v_check:'Я подтвердил →',v_resend:'Отправить повторно',v_logout:'Выйти',
+  // Nav sections
+  nsl_main:'Главное',nsl_anal:'Анализ',nsl_meth:'Методы',nsl_ref:'Справка',
+  // Nav items
+  n_dash:'Дашборд',n_schools:'Школы',n_profile:'Профиль',
+  n_calc:'Калькулятор',n_hist:'История',
+  n_koch:'Метод Коха',n_gram:'Окраска по Граму',
+  n_sci:'Учёные',n_creator:'Создатель',
+  n_acc:'Аккаунт',n_logout:'Выйти',n_owner:'Панель владельца',
+  // Season
+  s_win:'Зима',s_sum:'Лето',
+  cs_lbl:'Сезон:',
+  cs_win:'Зима (норма 7 000)',cs_sum:'Лето (норма 2 500)',
+  // Topbar
+  pg_dashboard:'📊 Дашборд',pg_schools:'🏫 Школы',pg_profile:'📋 Профиль',
+  pg_calculator:'🔬 Калькулятор Омелянского',pg_history:'📈 История',
+  pg_koch:'🧫 Метод Коха',pg_gram:'🎨 Окраска по Граму',
+  pg_scientists:'🧬 Учёные',pg_creator:'⭐ Создатель',
+  pg_account:'👤 Аккаунт',pg_ownerpanel:'🛡 Owner Panel',
+  // Dashboard
+  ds1_l:'Школ в базе',ds2_l:'Расчётов',ds3_l:'Макс. загрязнение',ds4_l:'Участников',
+  dash_chart_title:'Данные Школы № 210',
+  rc_empty:'Расчёты появятся здесь',
+  norm_hint_winter:'Зелёная линия = норма 7 000 / м³ (зима)',
+  norm_hint_summer:'Зелёная линия = норма 2 500 / м³ (лето)',
+  norm_ind_winter:'❄️ Зимняя норма: 7 000 микроорг./м³',
+  norm_ind_summer:'☀️ Летняя норма: 2 500 микроорг./м³',
+  dash_recent:'Последние расчёты',
+  // Table headers
+  th_room:'Помещение',th_school:'Школа',th_result:'Результат',th_status:'Статус',th_date:'Дата',
+  // Schools
+  add_school:'➕ Добавить школу',add_school_card:'Добавить школу',
+  p_choose:'Выберите школу из списка',
+  // Profile labels
+  pm_dir:'Директор',pm_students:'Учеников',pm_year:'Год',pm_type:'Тип',pm_vent:'Вентиляция',pm_calcs:'Расчётов',
+  rooms_title:'Помещения',calcs_title:'Расчёты по школе',
+  // Calculator
+  cf_lbl:'Формула Омелянского',
+  fl_a:'колонии',fl_s:'площадь, см²',fl_t:'время, мин',fl_x:'микроорг./м³',
+  cl_school:'Школа',cl_room:'Помещение',cl_c1:'🧫 Чашка 1 — колоний',cl_c2:'🧫 Чашка 2 — колоний',cl_c3:'🧫 Чашка 3 — колоний',
+  cl_s:'📐 Площадь S (см²)',cl_t:'⏱ Время T (мин)',cl_avg:'∑ Среднее а',
+  calcBtn:'⚡ Рассчитать',resetBtn:'Сбросить',
+  r_lbl:'Результат',r_unit:'микроорганизмов / м³',
+  saveBtn:'💾 Сохранить в историю',
+  // Norms table
+  norm_table_title:'Нормы загрязнённости',
+  nt_grade:'Оценка',nt_summer:'Лето',nt_winter:'Зима',
+  nt_clean:'✅ Чистый',nt_mid:'⚠️ Умеренный',nt_bad:'❌ Загрязнён',
+  // Current norm
+  cur_norm_winter:'Текущая норма: ❄️ 7 000 / м³',
+  cur_norm_summer:'Текущая норма: ☀️ 2 500 / м³',
+  hist_title_side:'История расчётов',hist_empty_txt:'Пусто',
+  // Verdict
+  v_clean:'✅ Чистый воздух',v_mid:'⚠️ Умеренное загрязнение',v_bad:'❌ Норма превышена',
+  v_clean_hint:'ниже нормы',v_bad_hint:'раза выше нормы',
+  // History
+  hist_total:'Всего:',hist_clear:'🗑 Очистить',hist_empty:'История пуста',
+  // Koch
+  koch_title:'Метод Коха (Седиментационный)',
+  koch_desc:'Самый старый метод анализа воздуха. Разработан Робертом Кохом. Основан на естественном оседании микроорганизмов на питательную среду.',
+  koch_steps_t:'Пошаговый протокол',
+  ks1_t:'🧪 Подготовка',ks1_d:'Стерильные чашки Петри с МПА. Подписать: помещение, номер повторности, дата.',
+  ks2_t:'📍 Расстановка',ks2_d:'На высоте 1–1,5 м. Минимум 3 повторности на каждое помещение.',
+  ks3_t:'⏱ Экспозиция 5 минут',ks3_d:'Снять крышки. Не двигаться рядом — завихрения воздуха искажают результат.',
+  ks4_t:'🔒 Закрытие',ks4_d:'Закрыть и обернуть скотчем. В термостат не позднее 1–2 часов.',
+  ks5_t:'🌡 Инкубация',ks5_d:'37°C — 24 ч. Затем при комнатной температуре ещё 24 ч.',
+  ks6_t:'🔢 Подсчёт колоний',ks6_d:'Подсчитать все колонии. Среднее из трёх = значение «а» для формулы.',
+  koch_btn:'→ Перейти к Калькулятору',
+  // Gram
+  gram_title:'Окраска по методу Грама',
+  gram_desc:'Дифференциальный метод 1884 года. Разделяет бактерии на грамположительные и грамотрицательные.',
+  gram_pos:'🟣 ГРАМПОЛОЖИТЕЛЬНЫЕ',gram_neg:'🔴 ГРАМОТРИЦАТЕЛЬНЫЕ',
+  gram_pos_desc:'Окрашиваются в фиолетовый. Толстая клеточная стенка удерживает краситель.',
+  gram_neg_desc:'Окрашиваются в розовый. Тонкая стенка + внешняя мембрана.',
+  gram_found:'⚠️ Обнаружены в Школе №210',
+  gram_steps_t:'Протокол окраски',
+  gs1_t:'💜 Кристаллвиолет (2–3 мин)',gs1_d:'Нанести краситель через фильтровальную бумажку.',
+  gs2_t:'🟫 Раствор Люголя (2 мин)',gs2_d:'Фиксирует комплекс краситель–клеточная стенка.',
+  gs3_t:'🥃 Спирт 96% (30–60 сек)',gs3_d:'Обесцвечивание. Немедленно промыть водой.',
+  gs4_t:'🔴 Фуксин (2–3 мин)',gs4_d:'Докраска грамотрицательных в розовый. Промыть, подсушить.',
+  gs5_t:'🔭 Микроскопия ×100',gs5_d:'Масляный объектив. Оценить форму клеток и цвет.',
+  gram_result_title:'📊 Результат исследования (Школа № 210)',
+  gram_result_desc:'Выявлены грамположительные кокки и бациллы — типичные обитатели воздуха закрытых помещений.',
+  // Scientists
+  sci_intro:'Учёные, заложившие фундамент микробиологического анализа воздуха.',
+  sci_contrib:'Вклад в науку',
+  // Creator
+  cr_subtitle:'Основатель и разработчик · MicroAir Lab · Ташкент, 2026',
+  cr_desc:'Автор исследовательской работы «Микробиологический анализ воздуха школьных помещений» и создатель данной цифровой платформы. Провёл полевые эксперименты в четырёх помещениях Школы № 210.',
+  cr_f1:'Сфера',cr_v1:'Микробиология воздуха',cr_f2:'Год запуска',cr_f3:'Организация',
+  cr_quote:'«Мы не можем увидеть бактерии. Но это не значит, что их нет. Знание — первый шаг к действию.»',
+  cr_tag1:'🔬 Исследователь',cr_tag2:'💻 Разработчик',
+  cr_thanks_title:'Благодарности',
+  cr_thanks_desc:'Иванова М.А. и Ершова З.А. — научные руководители. Филиал РХТУ им. Менделеева — оборудование.',
+  // Owner
+  op_title:'Owner Control Panel',op_sub:'Полный контроль. Реальные данные из Firebase.',
+  op1_l:'Пользователей',op2_l:'Школ',op3_l:'Расчётов',
+  op_users_title:'Пользователи системы',op_danger_title:'⚠️ Опасная зона',
+  op_delcalcs:'🗑 Очистить расчёты',op_resetsch:'🏫 Сбросить школы',
+  op_th_name:'Имя',op_th_email:'Email',op_th_role:'Роль',op_th_action:'Действие',
+  // Account
+  acc_edit_title:'✏️ Редактировать профиль',
+  acc_nl:'Имя',acc_rl:'Роль',accSaveBtn:'💾 Сохранить',
+  acc_ro_s:'Ученик',acc_ro_t:'Педагог',acc_ro_r:'Исследователь',
+  acc_stats_title:'📊 Статистика',
+  as1_l:'Школ',as2_l:'Расчётов',as3_l:'Дней',
+  acc_danger_title:'⚠️ Опасная зона',
+  acc_out_title:'Выйти',acc_out_desc:'Сессия завершится. Данные сохранятся.',acc_out_btn:'🚪 Выйти',
+  acc_del_title:'Удалить аккаунт',acc_del_desc:'Удалится навсегда из Firebase.',acc_del_btn:'🗑 Удалить',
+  // Modal school
+  ml_add:'Добавить школу',ml_edit:'Редактировать школу',
+  ml_num:'Номер',ml_name:'Полное название',ml_city:'Город / Район',
+  ml_addr:'Адрес',ml_dir:'Директор',ml_st:'Учеников',ml_yr:'Год постройки',
+  ml_type:'Тип',ml_vent:'Вентиляция',ml_notes:'Примечания',
+  ml_cancel:'Отмена',ml_save:'💾 Сохранить',
+  mt1:'Общеобразовательная школа',mt2:'Гимназия',mt3:'Лицей',mt4:'Специализированная',
+  mv1:'Естественная',mv2:'Механическая',mv3:'Комбинированная',mv4:'Отсутствует',
+  // Badges
+  b_clean:'Чистый',b_mid:'Умеренный',b_bad:'Загрязнён',
+  // Roles
+  role_student:'Ученик',role_teacher:'Педагог',role_researcher:'Исследователь',role_admin:'Администратор',role_owner:'⚡ OWNER',
+  // Mobile
+  mob_title:'MicroAir Lab',mob_desc:'Платформа оптимизирована для компьютера.',
+  mob_avail:'📌 Доступно:',mob_reg:'✅ Регистрация',mob_no:'❌ Анализ данных',
+  mob_bypass:'⚡ Owner: войти',
+  // Loading
+  lov_loading:'Загрузка...',lov_saving:'Сохранение...',
+},
+en:{
+  tab_login:'Login',tab_reg:'Register',
+  a_sub:'Microbiological air analysis system',
+  l_email:'Email',l_pass:'Password',l_name:'Full name',l_role:'Role',l_rpass:'Password (min. 6 chars)',
+  login_btn:'Sign in →',reg_btn:'Create account →',
+  ro_s:'Student',ro_t:'Teacher',ro_r:'Researcher',
+  v_title:'Verify your email',
+  v_desc:'We sent a verification email. Click the link in the email to activate your account.',
+  v_check:'I verified →',v_resend:'Resend email',v_logout:'Logout',
+  nsl_main:'Main',nsl_anal:'Analysis',nsl_meth:'Methods',nsl_ref:'Reference',
+  n_dash:'Dashboard',n_schools:'Schools',n_profile:'Profile',
+  n_calc:'Calculator',n_hist:'History',
+  n_koch:'Koch Method',n_gram:'Gram Staining',
+  n_sci:'Scientists',n_creator:'Creator',
+  n_acc:'Account',n_logout:'Logout',n_owner:'Owner Panel',
+  s_win:'Winter',s_sum:'Summer',
+  cs_lbl:'Season:',cs_win:'Winter (norm 7,000)',cs_sum:'Summer (norm 2,500)',
+  pg_dashboard:'📊 Dashboard',pg_schools:'🏫 Schools',pg_profile:'📋 Profile',
+  pg_calculator:'🔬 Omelyansky Calculator',pg_history:'📈 History',
+  pg_koch:'🧫 Koch Method',pg_gram:'🎨 Gram Staining',
+  pg_scientists:'🧬 Scientists',pg_creator:'⭐ Creator',
+  pg_account:'👤 Account',pg_ownerpanel:'🛡 Owner Panel',
+  ds1_l:'Schools',ds2_l:'Calculations',ds3_l:'Max contamination',ds4_l:'Members',
+  dash_chart_title:'School No. 210 Data',
+  rc_empty:'Calculations will appear here',
+  norm_hint_winter:'Green line = norm 7,000 / m³ (winter)',
+  norm_hint_summer:'Green line = norm 2,500 / m³ (summer)',
+  norm_ind_winter:'❄️ Winter norm: 7,000 microorg./m³',
+  norm_ind_summer:'☀️ Summer norm: 2,500 microorg./m³',
+  dash_recent:'Recent calculations',
+  th_room:'Room',th_school:'School',th_result:'Result',th_status:'Status',th_date:'Date',
+  add_school:'➕ Add school',add_school_card:'Add school',p_choose:'Select a school from the list',
+  pm_dir:'Principal',pm_students:'Students',pm_year:'Year',pm_type:'Type',pm_vent:'Ventilation',pm_calcs:'Calculations',
+  rooms_title:'Rooms',calcs_title:'Calculations for school',
+  cf_lbl:'Omelyansky Formula',
+  fl_a:'colonies',fl_s:'area, cm²',fl_t:'time, min',fl_x:'microorg./m³',
+  cl_school:'School',cl_room:'Room',cl_c1:'🧫 Dish 1 — colonies',cl_c2:'🧫 Dish 2 — colonies',cl_c3:'🧫 Dish 3 — colonies',
+  cl_s:'📐 Area S (cm²)',cl_t:'⏱ Time T (min)',cl_avg:'∑ Average a',
+  calcBtn:'⚡ Calculate',resetBtn:'Reset',
+  r_lbl:'Result',r_unit:'microorganisms / m³',saveBtn:'💾 Save to history',
+  norm_table_title:'Contamination norms',
+  nt_grade:'Grade',nt_summer:'Summer',nt_winter:'Winter',
+  nt_clean:'✅ Clean',nt_mid:'⚠️ Moderate',nt_bad:'❌ Polluted',
+  cur_norm_winter:'Current norm: ❄️ 7,000 / m³',cur_norm_summer:'Current norm: ☀️ 2,500 / m³',
+  hist_title_side:'Calculation history',hist_empty_txt:'Empty',
+  v_clean:'✅ Clean air',v_mid:'⚠️ Moderate pollution',v_bad:'❌ Norm exceeded',
+  v_clean_hint:'below norm',v_bad_hint:'times above norm',
+  hist_total:'Total:',hist_clear:'🗑 Clear',hist_empty:'History is empty',
+  koch_title:'Koch Method (Sedimentation)',
+  koch_desc:'The oldest method of air analysis in enclosed spaces. Developed by Robert Koch. Based on natural sedimentation of microorganisms onto nutrient medium.',
+  koch_steps_t:'Step-by-step protocol',
+  ks1_t:'🧪 Preparation',ks1_d:'Sterile Petri dishes with nutrient agar (MPA). Label each: room, repeat number, date.',
+  ks2_t:'📍 Placement',ks2_d:'At a height of 1–1.5 m. Minimum 3 replicates per room.',
+  ks3_t:'⏱ Exposure 5 minutes',ks3_d:'Remove lids for exactly 5 minutes. Do not move nearby — air turbulence distorts results.',
+  ks4_t:'🔒 Closing & transport',ks4_d:'Close lids, wrap with tape. Deliver to incubator within 1–2 hours.',
+  ks5_t:'🌡 Incubation',ks5_d:'37°C — 24 hours. Then at room temperature for another 24 hours.',
+  ks6_t:'🔢 Colony counting',ks6_d:'Count all visible colonies. Average of three = value "a" for Omelyansky formula.',
+  koch_btn:'→ Go to Calculator',
+  gram_title:'Gram Staining Method',
+  gram_desc:'Differential method from 1884. Divides bacteria into gram-positive and gram-negative by cell wall structure.',
+  gram_pos:'🟣 GRAM-POSITIVE',gram_neg:'🔴 GRAM-NEGATIVE',
+  gram_pos_desc:'Stain purple. Thick cell wall retains the dye.',
+  gram_neg_desc:'Stain pink. Thin wall + outer membrane does not retain dye.',
+  gram_found:'⚠️ Found in School No.210',
+  gram_steps_t:'Staining protocol',
+  gs1_t:'💜 Crystal violet (2–3 min)',gs1_d:'Apply dye through filter paper. Sinev method: ready-made papers with 1% crystal violet.',
+  gs2_t:'🟫 Lugol\'s solution (2 min)',gs2_d:'Fixes the dye-cell wall complex.',
+  gs3_t:'🥃 Decolorize with 96% alcohol (30–60 sec)',gs3_d:'Rinse with alcohol — gram-negative lose color. Immediately rinse with water.',
+  gs4_t:'🔴 Counterstain with fuchsin (2–3 min)',gs4_d:'Gram-negative bacteria stain pink-red.',
+  gs5_t:'🔭 Microscopy ×100 (oil immersion)',gs5_d:'Apply immersion oil. Assess cell shape and staining color.',
+  gram_result_title:'📊 Research result (School No. 210)',
+  gram_result_desc:'Gram-positive cocci and bacilli detected — typical inhabitants of enclosed space air, capable of causing respiratory infections.',
+  sci_intro:'Scientists who laid the foundation of microbiological air analysis. Their methods are used in this research.',
+  sci_contrib:'Scientific contributions',
+  cr_subtitle:'Founder & Developer · MicroAir Lab · Tashkent, 2026',
+  cr_desc:'Author of the research paper "Microbiological Air Analysis in School Premises" and creator of this digital platform. Conducted field experiments in four rooms of School No. 210 in Tashkent, using Koch, Omelyansky and Gram methods.',
+  cr_f1:'Field',cr_v1:'Air microbiology',cr_f2:'Launch year',cr_f3:'Organization',
+  cr_quote:'"We cannot see bacteria. But that doesn\'t mean they aren\'t there. Knowledge is the first step to action."',
+  cr_tag1:'🔬 Researcher',cr_tag2:'💻 Developer',
+  cr_thanks_title:'Acknowledgements',
+  cr_thanks_desc:'Ivanova M.A. and Ershova Z.A. — scientific advisors. Branch of RSCU D.I. Mendeleev — laboratory facilities.',
+  op_title:'Owner Control Panel',op_sub:'Full control. Real data from Firebase.',
+  op1_l:'Users',op2_l:'Schools',op3_l:'Calculations',
+  op_users_title:'System users',op_danger_title:'⚠️ Danger zone',
+  op_delcalcs:'🗑 Clear calculations',op_resetsch:'🏫 Reset schools',
+  op_th_name:'Name',op_th_email:'Email',op_th_role:'Role',op_th_action:'Action',
+  acc_edit_title:'✏️ Edit profile',
+  acc_nl:'Name',acc_rl:'Role',accSaveBtn:'💾 Save',
+  acc_ro_s:'Student',acc_ro_t:'Teacher',acc_ro_r:'Researcher',
+  acc_stats_title:'📊 Statistics',
+  as1_l:'Schools',as2_l:'Calculations',as3_l:'Days',
+  acc_danger_title:'⚠️ Danger zone',
+  acc_out_title:'Logout',acc_out_desc:'Session will end. Data is saved.',acc_out_btn:'🚪 Logout',
+  acc_del_title:'Delete account',acc_del_desc:'Will be permanently deleted from Firebase.',acc_del_btn:'🗑 Delete',
+  ml_add:'Add school',ml_edit:'Edit school',
+  ml_num:'Number',ml_name:'Full name',ml_city:'City / District',
+  ml_addr:'Address',ml_dir:'Principal',ml_st:'Students',ml_yr:'Year built',
+  ml_type:'Type',ml_vent:'Ventilation',ml_notes:'Notes',
+  ml_cancel:'Cancel',ml_save:'💾 Save',
+  mt1:'General school',mt2:'Gymnasium',mt3:'Lyceum',mt4:'Specialized school',
+  mv1:'Natural',mv2:'Mechanical',mv3:'Combined',mv4:'None',
+  b_clean:'Clean',b_mid:'Moderate',b_bad:'Polluted',
+  role_student:'Student',role_teacher:'Teacher',role_researcher:'Researcher',role_admin:'Admin',role_owner:'⚡ OWNER',
+  mob_title:'MicroAir Lab',mob_desc:'Platform is optimized for desktop.',
+  mob_avail:'📌 Available:',mob_reg:'✅ Registration',mob_no:'❌ Data analysis',mob_bypass:'⚡ Owner: enter',
+  lov_loading:'Loading...',lov_saving:'Saving...',
+},
+de:{
+  tab_login:'Anmelden',tab_reg:'Registrieren',
+  a_sub:'System zur mikrobiologischen Luftanalyse',
+  l_email:'E-Mail',l_pass:'Passwort',l_name:'Vor- und Nachname',l_role:'Rolle',l_rpass:'Passwort (min. 6 Zeichen)',
+  login_btn:'Einloggen →',reg_btn:'Konto erstellen →',
+  ro_s:'Schüler / Student',ro_t:'Lehrer',ro_r:'Forscher',
+  v_title:'E-Mail bestätigen',
+  v_desc:'Wir haben eine Bestätigungs-E-Mail gesendet. Klicken Sie auf den Link in der E-Mail.',
+  v_check:'Ich habe bestätigt →',v_resend:'Erneut senden',v_logout:'Abmelden',
+  nsl_main:'Hauptmenü',nsl_anal:'Analyse',nsl_meth:'Methoden',nsl_ref:'Referenz',
+  n_dash:'Dashboard',n_schools:'Schulen',n_profile:'Schulprofil',
+  n_calc:'Rechner',n_hist:'Verlauf',
+  n_koch:'Koch-Methode',n_gram:'Gram-Färbung',
+  n_sci:'Wissenschaftler',n_creator:'Ersteller',
+  n_acc:'Konto',n_logout:'Abmelden',n_owner:'Owner-Panel',
+  s_win:'Winter',s_sum:'Sommer',
+  cs_lbl:'Jahreszeit:',cs_win:'Winter (Norm 7.000)',cs_sum:'Sommer (Norm 2.500)',
+  pg_dashboard:'📊 Dashboard',pg_schools:'🏫 Schulen',pg_profile:'📋 Profil',
+  pg_calculator:'🔬 Omelyansky-Rechner',pg_history:'📈 Verlauf',
+  pg_koch:'🧫 Koch-Methode',pg_gram:'🎨 Gram-Färbung',
+  pg_scientists:'🧬 Wissenschaftler',pg_creator:'⭐ Ersteller',
+  pg_account:'👤 Konto',pg_ownerpanel:'🛡 Owner Panel',
+  ds1_l:'Schulen',ds2_l:'Berechnungen',ds3_l:'Max. Verschmutzung',ds4_l:'Mitglieder',
+  dash_chart_title:'Schule Nr. 210 Daten',
+  rc_empty:'Berechnungen erscheinen hier',
+  norm_hint_winter:'Grüne Linie = Norm 7.000 / m³ (Winter)',
+  norm_hint_summer:'Grüne Linie = Norm 2.500 / m³ (Sommer)',
+  norm_ind_winter:'❄️ Winternorm: 7.000 Mikroorg./m³',
+  norm_ind_summer:'☀️ Sommernorm: 2.500 Mikroorg./m³',
+  dash_recent:'Letzte Berechnungen',
+  th_room:'Raum',th_school:'Schule',th_result:'Ergebnis',th_status:'Status',th_date:'Datum',
+  add_school:'➕ Schule hinzufügen',add_school_card:'Schule hinzufügen',p_choose:'Wählen Sie eine Schule',
+  pm_dir:'Direktor',pm_students:'Schüler',pm_year:'Jahr',pm_type:'Typ',pm_vent:'Belüftung',pm_calcs:'Berechnungen',
+  rooms_title:'Räume',calcs_title:'Berechnungen für Schule',
+  cf_lbl:'Omelyansky-Formel',
+  fl_a:'Kolonien',fl_s:'Fläche, cm²',fl_t:'Zeit, min',fl_x:'Mikroorg./m³',
+  cl_school:'Schule',cl_room:'Raum',cl_c1:'🧫 Schale 1 — Kolonien',cl_c2:'🧫 Schale 2 — Kolonien',cl_c3:'🧫 Schale 3 — Kolonien',
+  cl_s:'📐 Fläche S (cm²)',cl_t:'⏱ Zeit T (min)',cl_avg:'∑ Durchschnitt a',
+  calcBtn:'⚡ Berechnen',resetBtn:'Zurücksetzen',
+  r_lbl:'Ergebnis',r_unit:'Mikroorganismen / m³',saveBtn:'💾 Im Verlauf speichern',
+  norm_table_title:'Verschmutzungsnormen',
+  nt_grade:'Bewertung',nt_summer:'Sommer',nt_winter:'Winter',
+  nt_clean:'✅ Sauber',nt_mid:'⚠️ Mäßig',nt_bad:'❌ Verschmutzt',
+  cur_norm_winter:'Aktuelle Norm: ❄️ 7.000 / m³',cur_norm_summer:'Aktuelle Norm: ☀️ 2.500 / m³',
+  hist_title_side:'Berechnungsverlauf',hist_empty_txt:'Leer',
+  v_clean:'✅ Saubere Luft',v_mid:'⚠️ Mäßige Verschmutzung',v_bad:'❌ Norm überschritten',
+  v_clean_hint:'unter der Norm',v_bad_hint:'mal über der Norm',
+  hist_total:'Gesamt:',hist_clear:'🗑 Löschen',hist_empty:'Verlauf ist leer',
+  koch_title:'Koch-Methode (Sedimentation)',
+  koch_desc:'Die älteste Methode der Luftanalyse. Entwickelt von Robert Koch. Basiert auf natürlicher Sedimentation von Mikroorganismen auf Nährmedium.',
+  koch_steps_t:'Schritt-für-Schritt-Protokoll',
+  ks1_t:'🧪 Vorbereitung',ks1_d:'Sterile Petrischalen mit Nähragar. Beschriften: Raum, Wiederholungsnummer, Datum.',
+  ks2_t:'📍 Aufstellung',ks2_d:'In einer Höhe von 1–1,5 m. Mindestens 3 Wiederholungen pro Raum.',
+  ks3_t:'⏱ Exposition 5 Minuten',ks3_d:'Deckel für genau 5 Minuten entfernen. Nicht in der Nähe bewegen.',
+  ks4_t:'🔒 Verschließen',ks4_d:'Deckel schließen, mit Klebeband umwickeln. Innerhalb 1–2 Stunden in den Brutschrank.',
+  ks5_t:'🌡 Inkubation',ks5_d:'37°C — 24 Stunden. Dann bei Raumtemperatur noch 24 Stunden.',
+  ks6_t:'🔢 Kolonienzählung',ks6_d:'Alle sichtbaren Kolonien zählen. Durchschnitt aus drei = Wert "a" für Formel.',
+  koch_btn:'→ Zum Rechner',
+  gram_title:'Gram-Färbung',
+  gram_desc:'Differentialmethode von 1884. Teilt Bakterien nach Zellwandstruktur in grampositiv und gramnegativ.',
+  gram_pos:'🟣 GRAMPOSITIV',gram_neg:'🔴 GRAMNEGATIV',
+  gram_pos_desc:'Färben sich violett. Dicke Zellwand hält den Farbstoff zurück.',
+  gram_neg_desc:'Färben sich rosa. Dünne Wand + äußere Membran hält Farbstoff nicht zurück.',
+  gram_found:'⚠️ Gefunden in Schule Nr. 210',
+  gram_steps_t:'Färbeprotokoll',
+  gs1_t:'💜 Kristallviolett (2–3 Min)',gs1_d:'Farbstoff über Filterpapier auftragen.',
+  gs2_t:'🟫 Lugol\'sche Lösung (2 Min)',gs2_d:'Fixiert den Farbstoff-Zellwand-Komplex.',
+  gs3_t:'🥃 Entfärben mit 96% Alkohol (30–60 Sek)',gs3_d:'Mit Alkohol spülen, sofort mit Wasser nachspülen.',
+  gs4_t:'🔴 Gegenfärbung mit Fuchsin (2–3 Min)',gs4_d:'Gramnegative Bakterien färben sich rosa-rot.',
+  gs5_t:'🔭 Mikroskopie ×100 (Ölimmersion)',gs5_d:'Immersionsöl auftragen. Zellform und Färbung beurteilen.',
+  gram_result_title:'📊 Forschungsergebnis (Schule Nr. 210)',
+  gram_result_desc:'Grampositive Kokken und Bazillen wurden nachgewiesen — typische Bewohner der Luft geschlossener Räume.',
+  sci_intro:'Wissenschaftler, die das Fundament der mikrobiologischen Luftanalyse legten.',
+  sci_contrib:'Wissenschaftliche Beiträge',
+  cr_subtitle:'Gründer & Entwickler · MicroAir Lab · Taschkent, 2026',
+  cr_desc:'Autor der Forschungsarbeit "Mikrobiologische Luftanalyse in Schulräumen" und Schöpfer dieser digitalen Plattform. Durchführung von Feldexperimenten in vier Räumen der Schule Nr. 210 in Taschkent.',
+  cr_f1:'Fachgebiet',cr_v1:'Luftmikrobiologie',cr_f2:'Startjahr',cr_f3:'Organisation',
+  cr_quote:'"Wir können Bakterien nicht sehen. Aber das bedeutet nicht, dass sie nicht da sind. Wissen ist der erste Schritt zum Handeln."',
+  cr_tag1:'🔬 Forscher',cr_tag2:'💻 Entwickler',
+  cr_thanks_title:'Danksagungen',
+  cr_thanks_desc:'Iwanova M.A. und Erschowa Z.A. — wissenschaftliche Betreuer. Zweigstelle der RSCU D.I. Mendeleev — Laborräume.',
+  op_title:'Owner Control Panel',op_sub:'Vollständige Kontrolle. Echte Daten aus Firebase.',
+  op1_l:'Benutzer',op2_l:'Schulen',op3_l:'Berechnungen',
+  op_users_title:'Systembenutzer',op_danger_title:'⚠️ Gefahrenzone',
+  op_delcalcs:'🗑 Berechnungen löschen',op_resetsch:'🏫 Schulen zurücksetzen',
+  op_th_name:'Name',op_th_email:'E-Mail',op_th_role:'Rolle',op_th_action:'Aktion',
+  acc_edit_title:'✏️ Profil bearbeiten',
+  acc_nl:'Name',acc_rl:'Rolle',accSaveBtn:'💾 Speichern',
+  acc_ro_s:'Schüler',acc_ro_t:'Lehrer',acc_ro_r:'Forscher',
+  acc_stats_title:'📊 Statistik',
+  as1_l:'Schulen',as2_l:'Berechnungen',as3_l:'Tage',
+  acc_danger_title:'⚠️ Gefahrenzone',
+  acc_out_title:'Abmelden',acc_out_desc:'Sitzung endet. Daten werden gespeichert.',acc_out_btn:'🚪 Abmelden',
+  acc_del_title:'Konto löschen',acc_del_desc:'Wird dauerhaft aus Firebase gelöscht.',acc_del_btn:'🗑 Löschen',
+  ml_add:'Schule hinzufügen',ml_edit:'Schule bearbeiten',
+  ml_num:'Nummer',ml_name:'Vollständiger Name',ml_city:'Stadt / Bezirk',
+  ml_addr:'Adresse',ml_dir:'Direktor',ml_st:'Schüler',ml_yr:'Baujahr',
+  ml_type:'Typ',ml_vent:'Belüftung',ml_notes:'Notizen',
+  ml_cancel:'Abbrechen',ml_save:'💾 Speichern',
+  mt1:'Allgemeine Schule',mt2:'Gymnasium',mt3:'Lyzeum',mt4:'Spezialschule',
+  mv1:'Natürlich',mv2:'Mechanisch',mv3:'Kombiniert',mv4:'Keine',
+  b_clean:'Sauber',b_mid:'Mäßig',b_bad:'Verschmutzt',
+  role_student:'Schüler',role_teacher:'Lehrer',role_researcher:'Forscher',role_admin:'Admin',role_owner:'⚡ OWNER',
+  mob_title:'MicroAir Lab',mob_desc:'Plattform für Desktop optimiert.',
+  mob_avail:'📌 Verfügbar:',mob_reg:'✅ Registrierung',mob_no:'❌ Datenanalyse',mob_bypass:'⚡ Owner: einloggen',
+  lov_loading:'Laden...',lov_saving:'Speichern...',
+}
+};
+
+let lang = localStorage.getItem('mal_lang')||'ru';
+function t(k){return (TT[lang]&&TT[lang][k])?TT[lang][k]:(TT.ru[k]||k);}
+
+function applyLang(){
+  // helper: set text if el exists
+  const s=(id,k)=>{const el=document.getElementById(id);if(el&&TT[lang][k]!==undefined)el.textContent=t(k);};
+  const ph=(id,k)=>{const el=document.getElementById(id);if(el&&TT[lang][k])el.placeholder=t(k);};
+
+  // Auth
+  s('tab-login','tab_login');s('tab-reg','tab_reg');s('a-sub','a_sub');
+  s('l-email','l_email');s('l-pass','l_pass');s('l-name','l_name');s('l-role','l_role');s('l-rpass','l_rpass');
+  s('l-remail','l_email');
+  s('loginBtn','login_btn');s('regBtn','reg_btn');
+  s('ro-s','ro_s');s('ro-t','ro_t');s('ro-r','ro_r');
+  // Verify
+  s('v-title','v_title');s('v-desc','v_desc');s('v-check','v_check');s('v-resend','v_resend');s('v-logout','v_logout');
+  // Nav sections
+  s('nsl-main','nsl_main');s('nsl-anal','nsl_anal');s('nsl-meth','nsl_meth');s('nsl-ref','nsl_ref');
+  // Nav items
+  s('n-dash','n_dash');s('n-schools','n_schools');s('n-profile','n_profile');
+  s('n-calc','n_calc');s('n-hist','n_hist');
+  s('n-koch','n_koch');s('n-gram','n_gram');
+  s('n-sci','n_sci');s('n-creator','n_creator');
+  s('n-acc','n_acc');s('n-logout','n_logout');s('n-owner','n_owner');
+  // Season labels
+  s('s-win-lbl','s_win');s('s-sum-lbl','s_sum');
+  s('cs-lbl','cs_lbl');s('cs-win-txt','cs_win');s('cs-sum-txt','cs_sum');
+  // Dashboard
+  s('ds1-l','ds1_l');s('ds2-l','ds2_l');s('ds3-l','ds3_l');s('ds4-l','ds4_l');
+  s('dash-chart-title','dash_chart_title');
+  s('dash-recent-title','dash_recent');
+  // Calc labels
+  s('cf-lbl','cf_lbl');
+  s('fl-a','fl_a');s('fl-s','fl_s');s('fl-t','fl_t');s('fl-x','fl_x');
+  s('cl-school','cl_school');s('cl-room','cl_room');
+  s('cl-c1','cl_c1');s('cl-c2','cl_c2');s('cl-c3','cl_c3');
+  s('cl-s','cl_s');s('cl-t','cl_t');s('cl-avg','cl_avg');
+  s('calcBtn','calcBtn');s('resetBtn','resetBtn');
+  s('r-lbl','r_lbl');s('r-unit','r_unit');s('saveBtn','saveBtn');
+  s('norm-table-title','norm_table_title');
+  s('nt-grade','nt_grade');s('nt-summer','nt_summer');s('nt-winter','nt_winter');
+  s('nt-clean','nt_clean');s('nt-mid','nt_mid');s('nt-bad','nt_bad');
+  s('hist-title-side','hist_title_side');s('hist-empty-txt','hist_empty_txt');
+  // Koch
+  s('koch-title','koch_title');s('koch-desc','koch_desc');s('koch-steps-t','koch_steps_t');
+  s('ks1-t','ks1_t');s('ks1-d','ks1_d');s('ks2-t','ks2_t');s('ks2-d','ks2_d');
+  s('ks3-t','ks3_t');s('ks3-d','ks3_d');s('ks4-t','ks4_t');s('ks4-d','ks4_d');
+  s('ks5-t','ks5_t');s('ks5-d','ks5_d');s('ks6-t','ks6_t');s('ks6-d','ks6_d');
+  s('koch-btn','koch_btn');
+  // Gram
+  s('gram-title','gram_title');s('gram-desc','gram_desc');
+  s('gram-pos','gram_pos');s('gram-neg','gram_neg');
+  s('gram-pos-desc','gram_pos_desc');s('gram-neg-desc','gram_neg_desc');
+  s('gram-found','gram_found');s('gram-steps-t','gram_steps_t');
+  s('gs1-t','gs1_t');s('gs1-d','gs1_d');s('gs2-t','gs2_t');s('gs2-d','gs2_d');
+  s('gs3-t','gs3_t');s('gs3-d','gs3_d');s('gs4-t','gs4_t');s('gs4-d','gs4_d');
+  s('gs5-t','gs5_t');s('gs5-d','gs5_d');
+  s('gram-result-title','gram_result_title');s('gram-result-desc','gram_result_desc');
+  // Scientists
+  s('sci-intro','sci_intro');
+  // Creator
+  s('cr-subtitle','cr_subtitle');s('cr-desc','cr_desc');
+  s('cr-f1','cr_f1');s('cr-v1','cr_v1');s('cr-f2','cr_f2');s('cr-f3','cr_f3');
+  s('cr-quote','cr_quote');s('cr-tag1','cr_tag1');s('cr-tag2','cr_tag2');
+  s('cr-thanks-title','cr_thanks_title');s('cr-thanks-desc','cr_thanks_desc');
+  // Owner panel
+  s('op-title','op_title');s('op-sub','op_sub');
+  s('op1-l','op1_l');s('op2-l','op2_l');s('op3-l','op3_l');
+  s('op-users-title','op_users_title');s('op-danger-title','op_danger_title');
+  s('op-delcalcs','op_delcalcs');s('op-resetsch','op_resetsch');
+  // Account
+  s('acc-edit-title','acc_edit_title');s('acc-nl','acc_nl');s('acc-rl','acc_rl');s('accSaveBtn','accSaveBtn');
+  s('acc-ro-s','acc_ro_s');s('acc-ro-t','acc_ro_t');s('acc-ro-r','acc_ro_r');
+  s('acc-stats-title','acc_stats_title');
+  s('as1-l','as1_l');s('as2-l','as2_l');s('as3-l','as3_l');
+  s('acc-danger-title','acc_danger_title');
+  s('acc-out-title','acc_out_title');s('acc-out-desc','acc_out_desc');s('acc-out-btn','acc_out_btn');
+  s('acc-del-title','acc_del_title');s('acc-del-desc','acc_del_desc');s('acc-del-btn','acc_del_btn');
+  // Modal
+  s('ml-num','ml_num');s('ml-name','ml_name');s('ml-city','ml_city');s('ml-addr','ml_addr');
+  s('ml-dir','ml_dir');s('ml-st','ml_st');s('ml-yr','ml_yr');
+  s('ml-type','ml_type');s('ml-vent','ml_vent');s('ml-notes','ml_notes');
+  s('ml-cancel','ml_cancel');s('ml-save','ml_save');
+  s('mt1','mt1');s('mt2','mt2');s('mt3','mt3');s('mt4','mt4');
+  s('mv1','mv1');s('mv2','mv2');s('mv3','mv3');s('mv4','mv4');
+  // Mobile
+  s('mob-title','mob_title');s('mob-desc','mob_desc');
+  s('mob-avail','mob_avail');s('mob-reg','mob_reg');s('mob-no','mob_no');s('mobBypass','mob_bypass');
+  // Profile static
+  s('p-choose','p_choose');
+  // Lang buttons style
+  ['RU','EN','DE'].forEach(c=>{
+    const btn=document.getElementById('lb'+c);
+    if(btn){btn.style.background=lang===c.toLowerCase()?'var(--accent)':'none';btn.style.color=lang===c.toLowerCase()?'#fff':'var(--muted)';}
+  });
+  // Season-dependent
+  updateSeasonUI();
+  // Re-render scientists with translated data
+  renderScientists();
+}
+
+window.setLang=function(l){lang=l;localStorage.setItem('mal_lang',l);applyLang();};
+
+// ── SEASON ──
+window.setSeason=function(s){
+  season=s;localStorage.setItem('mal_season',s);
+  updateSeasonUI();
+};
+function updateSeasonUI(){
+  const isW=season==='winter';
+  // season toggle buttons
+  const sw=document.getElementById('sWin'),ss=document.getElementById('sSum');
+  if(sw)sw.className='sbtn'+(isW?' on':'');
+  if(ss)ss.className='sbtn summer'+(isW?'':' on');
+  // norm indicator in dashboard
+  const ni=document.getElementById('normIndicator');
+  if(ni){ni.className='norm-indicator '+(isW?'norm-winter':'norm-summer');ni.innerHTML=(isW?'❄️ ':'☀️ ')+'<span id="normTxt">'+t(isW?'norm_ind_winter':'norm_ind_summer')+'</span>';}
+  // norm hint below chart
+  const nh=document.getElementById('norm-hint-txt');if(nh)nh.textContent=t(isW?'norm_hint_winter':'norm_hint_summer');
+  // current norm box in calc
+  const cnb=document.getElementById('cur-norm-txt');if(cnb)cnb.textContent=t(isW?'cur_norm_winter':'cur_norm_summer');
+  // calc season buttons
+  const csw=document.getElementById('cs-win'),css=document.getElementById('cs-sum');
+  if(csw){csw.className='bsm'+(isW?' primary':'');csw.style.fontWeight=isW?'700':'600';}
+  if(css){css.className='bsm'+(isW?'':' primary');css.style.fontWeight=isW?'600':'700';}
+  // update norm line in dash chart (43% = 7000/16220*100)
+  const normPct = isW ? 43 : 15; // approx for 7000 and 2500 vs max ~16220
+  document.querySelectorAll('.mcnorm').forEach(el=>el.style.left=normPct+'%');
+}
+
+// ── VERDICT ──
+function vBadge(v){
+  const norm=getNorm(); const clean=NORMS[season].clean;
+  if(!v)return'—';
+  if(v<=clean)return`<span class="badge b-ok">${t('b_clean')}</span>`;
+  if(v<=norm)return`<span class="badge b-warn">${t('b_mid')}</span>`;
+  return`<span class="badge b-danger">${t('b_bad')}</span>`;
+}
+function getVerdict(X){
+  const norm=getNorm();const clean=NORMS[season].clean;
+  if(X<=clean)return{text:t('v_clean'),css:'color:var(--ok);background:rgba(46,213,115,.12);border:1px solid rgba(46,213,115,.3);',hint:`${(norm/X).toFixed(1)}× ${t('v_clean_hint')}`};
+  if(X<=norm)return{text:t('v_mid'),css:'color:var(--warn);background:rgba(255,165,2,.12);border:1px solid rgba(255,165,2,.3);',hint:`${t('cur_norm_'+season).replace('Текущая норма: ','').replace('Current norm: ','').replace('Aktuelle Norm: ','')}`};
+  return{text:t('v_bad'),css:'color:var(--danger);background:rgba(255,71,87,.12);border:1px solid rgba(255,71,87,.3);',hint:`${(X/norm).toFixed(2)}× ${t('v_bad_hint')}`};
+}
+
+// ── MOBILE ──
+function isMob(){return /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent);}
+function showMob(isOwner){
+  document.getElementById('mobScreen').style.display='flex';
+  if(isOwner)document.getElementById('mobBypass').style.display='block';
+}
+window.mobBypass=function(){document.getElementById('mobScreen').style.display='none';launchApp();};
+
+// ── AUTH ──
+window.swTab=function(tab){
+  document.getElementById('tab-login').classList.toggle('on',tab==='login');
+  document.getElementById('tab-reg').classList.toggle('on',tab==='reg');
+  document.getElementById('f-login').style.display=tab==='login'?'block':'none';
+  document.getElementById('f-reg').style.display=tab==='reg'?'block':'none';
+  clearAMsg();
+};
+function showAErr(m){const e=document.getElementById('a-err');e.textContent=m;e.style.display='block';document.getElementById('a-ok').style.display='none';}
+function showAOk(m){const e=document.getElementById('a-ok');e.textContent=m;e.style.display='block';document.getElementById('a-err').style.display='none';}
+function clearAMsg(){document.getElementById('a-err').style.display='none';document.getElementById('a-ok').style.display='none';}
+
+window.doLogin=async function(){
+  const email=document.getElementById('lEmail').value.trim();
+  const pass=document.getElementById('lPass').value;
+  if(!email||!pass){showAErr(lang==='de'?'Bitte alle Felder ausfüllen':lang==='en'?'Fill in all fields':'Заполните все поля');return;}
+  const btn=document.getElementById('loginBtn');btn.disabled=true;btn.textContent='...';
+  try{await signInWithEmailAndPassword(auth,email,pass);}
+  catch(e){
+    const m={
+      'auth/user-not-found':{ru:'Email не найден',en:'Email not found',de:'E-Mail nicht gefunden'},
+      'auth/wrong-password':{ru:'Неверный пароль',en:'Wrong password',de:'Falsches Passwort'},
+      'auth/invalid-credential':{ru:'Неверный email или пароль',en:'Invalid email or password',de:'Ungültige E-Mail oder Passwort'},
+      'auth/invalid-email':{ru:'Неверный формат email',en:'Invalid email format',de:'Ungültiges E-Mail-Format'},
+    };
+    showAErr((m[e.code]&&m[e.code][lang])||e.message);
+  }finally{btn.disabled=false;btn.textContent=t('login_btn');}
+};
+
+window.doReg=async function(){
+  const name=document.getElementById('rName').value.trim();
+  const email=document.getElementById('rEmail').value.trim();
+  const pass=document.getElementById('rPass').value;
+  const role=document.getElementById('rRole').value;
+  if(!name||!email||!pass){showAErr(lang==='de'?'Bitte alle Felder ausfüllen':lang==='en'?'Fill in all fields':'Заполните все поля');return;}
+  if(pass.length<6){showAErr(lang==='de'?'Mindestens 6 Zeichen':lang==='en'?'At least 6 characters':'Минимум 6 символов');return;}
+  const btn=document.getElementById('regBtn');btn.disabled=true;btn.textContent='...';
+  try{
+    const cred=await createUserWithEmailAndPassword(auth,email,pass);
+    await updateProfile(cred.user,{displayName:name});
+    await setDoc(doc(db,'users',cred.user.uid),{
+      name,email,role:isOw(email)?'owner':role,
+      created:serverTimestamp(),uid:cred.user.uid
+    });
+    // Send verification email
+    await sendEmailVerification(cred.user);
+    showAOk(lang==='de'?'Konto erstellt! Bestätigungs-E-Mail gesendet.':lang==='en'?'Account created! Verification email sent.':'Аккаунт создан! Письмо с подтверждением отправлено.');
+  }catch(e){
+    const m={
+      'auth/email-already-in-use':{ru:'Email уже используется',en:'Email already in use',de:'E-Mail bereits vergeben'},
+      'auth/invalid-email':{ru:'Неверный формат email',en:'Invalid email format',de:'Ungültiges E-Mail-Format'},
+      'auth/weak-password':{ru:'Пароль слишком слабый',en:'Password too weak',de:'Passwort zu schwach'},
+    };
+    showAErr((m[e.code]&&m[e.code][lang])||e.message);
+  }finally{btn.disabled=false;btn.textContent=t('reg_btn');}
+};
+
+window.doLogout=async function(){await signOut(auth);toast(lang==='de'?'Abgemeldet':lang==='en'?'Logged out':'Вы вышли из системы','info');};
+
+// Verify email
+window.checkVerify=async function(){
+  lov(true,t('lov_loading'));
+  await reload(auth.currentUser);
+  if(auth.currentUser.emailVerified){
+    document.getElementById('verifyScreen').style.display='none';
+    launchApp();
+  }else{
+    toast(lang==='de'?'E-Mail noch nicht bestätigt':lang==='en'?'Email not verified yet':'Email ещё не подтверждён','error');
+  }
+  lov(false);
+};
+window.resendVerify=async function(){
+  try{await sendEmailVerification(auth.currentUser);toast(lang==='de'?'E-Mail erneut gesendet':lang==='en'?'Email sent again':'Письмо отправлено повторно','success');}
+  catch(e){toast(e.message,'error');}
+};
+
+window.deleteAcct=async function(){
+  const confirm_word=lang==='de'?'LÖSCHEN':lang==='en'?'DELETE':'УДАЛИТЬ';
+  if(prompt((lang==='de'?'Geben Sie "LÖSCHEN" ein':lang==='en'?'Type "DELETE" to confirm':'Введите "УДАЛИТЬ" для подтверждения:'))!==confirm_word){toast(lang==='de'?'Abgebrochen':lang==='en'?'Cancelled':'Отменено','info');return;}
+  try{await deleteDoc(doc(db,'users',CU.uid));await deleteUser(CU);}
+  catch(e){toast(lang==='de'?'Fehler. Bitte neu einloggen.':lang==='en'?'Error. Please re-login.':'Ошибка. Войдите заново.','error');}
+};
+
+// ── AUTH STATE ──
+onAuthStateChanged(auth,async(user)=>{
+  lov(true,t('lov_loading'));
+  if(user){
+    CU=user;
+    const snap=await getDoc(doc(db,'users',user.uid));
+    CD=snap.exists()?snap.data():{name:user.displayName||user.email,email:user.email,role:isOw(user.email)?'owner':'researcher',uid:user.uid};
+    if(isOw(user.email||''))CD.role='owner';
+    if(!snap.exists())await setDoc(doc(db,'users',user.uid),{...CD,created:serverTimestamp()});
+    document.getElementById('authScreen').style.display='none';
+    lov(false);
+    // Check email verification (skip for owner)
+    if(!user.emailVerified && !isOw(user.email||'')){
+      document.getElementById('verifyScreen').style.display='flex';
+      applyLang();
+      return;
+    }
+    if(isMob()&&!isOw(user.email||'')){showMob(false);applyLang();return;}
+    if(isMob()&&isOw(user.email||'')){showMob(true);applyLang();return;}
+    launchApp();
+  }else{
+    CU=null;CD=null;
+    document.getElementById('appShell').classList.remove('on');
+    document.getElementById('authScreen').style.display='flex';
+    document.getElementById('verifyScreen').style.display='none';
+    document.getElementById('mobScreen').style.display='none';
+    applyLang();lov(false);
+  }
+});
+
+// ── LAUNCH ──
+async function launchApp(){
+  document.getElementById('appShell').classList.add('on');
+  const roles={researcher:TT.ru.role_researcher,teacher:TT.ru.role_teacher,student:TT.ru.role_student,admin:TT.ru.role_admin,owner:'⚡ OWNER'};
+  const n=CD?.name||CU.displayName||'User';
+  document.getElementById('sbName').textContent=n;
+  document.getElementById('sbAv').textContent=n[0].toUpperCase();
+  document.getElementById('sbRole').textContent=roles[CD?.role]||'—';
+  if(CD?.role==='owner'){document.getElementById('sbRole').style.color='var(--warn)';document.getElementById('ownerNav').style.display='block';}
+  await ensureDefSchool();
+  await renderDash();
+  await renderSchools();
+  await renderCalcSelect();
+  await renderCalcHist();
+  applyLang();
+  setSeason(season);
+  showPage('dashboard');
+  setTimeout(animDash,400);
+}
+
+// ── DEFAULT SCHOOL ──
+async function ensureDefSchool(){
+  const r=doc(db,'schools','school_210');
+  if(!(await getDoc(r)).exists()){
+    await setDoc(r,{id:'school_210',num:'210',name:'Общеобразовательная школа № 210',city:'Ташкент, Юнусабадский район',addr:'ул. Мирзо Улугбека, 45',dir:'Каримов Баходир Алишерович',students:1240,year:1978,type:'Общеобразовательная школа',vent:'natural',notes:'Исследовательский объект проекта MicroAir 2025',rooms:[{name:'Учебный класс (каб. английского)',avg:16220,badge:'danger'},{name:'Столовая',avg:13499,badge:'danger'},{name:'Спортивный зал',avg:9918,badge:'warn'},{name:'Библиотека',avg:7253,badge:'warn'}],createdAt:serverTimestamp()});
+  }
+}
+
+// ── DASHBOARD ──
+async function renderDash(){
+  const [sc,ca]=await Promise.all([getDocs(collection(db,'schools')),getDocs(query(collection(db,'calculations'),orderBy('date','desc'),limit(100)))]);
+  document.getElementById('ds1').textContent=sc.size;
+  document.getElementById('ds2').textContent=ca.size;
+  document.getElementById('schoolsBadge').textContent=sc.size;
+  const calcs=ca.docs.map(d=>d.data());
+  if(calcs.length){const mx=calcs.reduce((a,b)=>a.value>b.value?a:b);document.getElementById('ds3').textContent=mx.value.toLocaleString('ru');}
+  const rc=document.getElementById('recentCalcs');
+  if(!calcs.length){rc.textContent=t('rc_empty');return;}
+  rc.innerHTML=`<table style="width:100%;border-collapse:collapse;font-size:12px;">
+    <tr style="color:var(--muted);font-size:10px;letter-spacing:.07em;text-transform:uppercase;border-bottom:1px solid var(--border);">
+      <th style="padding:7px 11px;text-align:left;">${t('th_room')}</th><th style="padding:7px 11px;text-align:left;">${t('th_school')}</th><th style="padding:7px 11px;text-align:right;">${t('th_result')}</th><th style="padding:7px 11px;text-align:center;">${t('th_status')}</th>
+    </tr>
+    ${calcs.slice(0,5).map(c=>`<tr style="border-bottom:1px solid rgba(255,255,255,.04);">
+      <td style="padding:9px 11px;font-weight:600;">${c.room||'—'}</td>
+      <td style="padding:9px 11px;color:var(--muted);">${c.schoolName||'—'}</td>
+      <td style="padding:9px 11px;text-align:right;font-family:'Unbounded',sans-serif;font-weight:700;color:${c.value>getNorm()?'var(--danger)':'var(--ok)'};">${c.value?.toLocaleString('ru')}</td>
+      <td style="padding:9px 11px;text-align:center;">${vBadge(c.value)}</td>
+    </tr>`).join('')}
+  </table>`;
+}
+function animDash(){
+  const M=20000;
+  [['dc1',16220],['dc2',13499],['dc3',9918],['dc4',7253]].forEach(([id,v])=>{
+    const el=document.getElementById(id);if(el)setTimeout(()=>el.style.width=((v/M)*100).toFixed(1)+'%',100);
+  });
+}
+
+// ── SCHOOLS ──
+async function renderSchools(){
+  const snap=await getDocs(collection(db,'schools'));
+  const grid=document.getElementById('schoolsGrid');grid.innerHTML='';
+  const ventMap={natural:t('mv1'),mechanic:t('mv2'),combined:t('mv3'),none:t('mv4')};
+  snap.forEach(d=>{
+    const s=d.data();
+    const c=document.createElement('div');c.className='sc2';
+    c.innerHTML=`<div class="sc2-act"><div class="ibb" onclick="event.stopPropagation();editSchool('${s.id}')">✏️</div><div class="ibb del" onclick="event.stopPropagation();delSchool('${s.id}')">🗑</div></div>
+      <div class="sc2-num">№ ${s.num}</div><div class="sc2-name">${s.name}</div>
+      <div class="sc2-meta">📍 ${s.city}<br>👥 ${s.students||0} · 📅 ${s.year||'—'}<br>👤 ${s.dir}</div>`;
+    c.onclick=()=>{selSchool=s.id;renderProfile();showPage('profile');};
+    grid.appendChild(c);
+  });
+  const add=document.createElement('div');add.className='addcard';
+  add.innerHTML=`<div style="font-size:30px;color:var(--muted);">＋</div><div style="font-size:13px;font-weight:600;">${t('add_school_card')}</div>`;
+  add.onclick=openAddSchool;grid.appendChild(add);
+  document.getElementById('schoolsBadge').textContent=snap.size;
+}
+window.openAddSchool=function(){editSid=null;document.getElementById('smTitle').textContent=t('ml_add');['mNum','mName','mCity','mAddr','mDir','mStudents','mYear','mNotes'].forEach(id=>document.getElementById(id).value='');openM('schoolModal');};
+window.editSchool=async function(id){
+  const snap=await getDoc(doc(db,'schools',id));if(!snap.exists())return;
+  const s=snap.data();editSid=id;
+  document.getElementById('smTitle').textContent=t('ml_edit');
+  ['mNum','mName','mCity','mAddr','mDir'].forEach(fld=>document.getElementById('m'+fld.replace('m','')+(fld==='mNum'?'Num':fld==='mName'?'Name':fld==='mCity'?'City':fld==='mAddr'?'Addr':'Dir')).value=s[fld.replace('m','').toLowerCase()]||'');
+  document.getElementById('mNum').value=s.num||'';document.getElementById('mName').value=s.name||'';
+  document.getElementById('mCity').value=s.city||'';document.getElementById('mAddr').value=s.addr||'';
+  document.getElementById('mDir').value=s.dir||'';document.getElementById('mStudents').value=s.students||'';
+  document.getElementById('mYear').value=s.year||'';document.getElementById('mType').value=s.type||'';
+  document.getElementById('mVent').value=s.vent||'natural';document.getElementById('mNotes').value=s.notes||'';
+  openM('schoolModal');
+};
+window.saveSchool=async function(){
+  const num=document.getElementById('mNum').value.trim();
+  const name=document.getElementById('mName').value.trim();
+  if(!num||!name){toast(t('ml_num')+' & '+t('ml_name'),'error');return;}
+  lov(true,t('lov_saving'));
+  const data={id:editSid||'school_'+Date.now(),num,name,city:document.getElementById('mCity').value.trim()||'—',addr:document.getElementById('mAddr').value.trim()||'—',dir:document.getElementById('mDir').value.trim()||'—',students:parseInt(document.getElementById('mStudents').value)||0,year:parseInt(document.getElementById('mYear').value)||0,type:document.getElementById('mType').value,vent:document.getElementById('mVent').value,notes:document.getElementById('mNotes').value.trim(),rooms:[],updatedAt:serverTimestamp()};
+  await setDoc(doc(db,'schools',editSid||data.id),data,{merge:true});
+  lov(false);toast(`${t('ml_add').replace('➕ ','')} № ${num} ✓`,'success');
+  closeM('schoolModal');renderSchools();renderCalcSelect();renderDash();
+};
+window.delSchool=async function(id){
+  if(!confirm(lang==='de'?'Schule löschen?':lang==='en'?'Delete school?':'Удалить школу?'))return;
+  await deleteDoc(doc(db,'schools',id));
+  if(selSchool===id)selSchool=null;renderSchools();renderDash();toast(lang==='de'?'Gelöscht':lang==='en'?'Deleted':'Удалено','info');
+};
+
+// ── PROFILE ──
+async function renderProfile(){
+  const cont=document.getElementById('profileContent');
+  const id=selSchool||'school_210';
+  const snap=await getDoc(doc(db,'schools',id));
+  if(!snap.exists()){cont.innerHTML=`<div class="empty">🏫<br><br><span>${t('p_choose')}</span></div>`;return;}
+  const s=snap.data();
+  const ventMap={natural:t('mv1'),mechanic:t('mv2'),combined:t('mv3'),none:t('mv4')};
+  const calcSnap=await getDocs(collection(db,'calculations'));
+  const calcs=calcSnap.docs.map(d=>d.data()).filter(c=>c.schoolId===id);
+  cont.innerHTML=`<div class="phdr">
+    <div class="pem">${s.num}</div>
+    <div style="flex:1;"><h2 style="font-family:'Unbounded',sans-serif;font-size:19px;font-weight:700;margin-bottom:4px;">${s.name}</h2>
+    <p style="color:var(--muted);font-size:13px;line-height:1.7;">📍 ${s.city} · ${s.addr}</p>
+    <div class="pmgrid">
+      <div class="pm"><div class="pmk">${t('pm_dir')}</div><div class="pmv">${s.dir}</div></div>
+      <div class="pm"><div class="pmk">${t('pm_students')}</div><div class="pmv">${s.students?.toLocaleString('ru')||0}</div></div>
+      <div class="pm"><div class="pmk">${t('pm_year')}</div><div class="pmv">${s.year}</div></div>
+      <div class="pm"><div class="pmk">${t('pm_type')}</div><div class="pmv">${s.type||'—'}</div></div>
+      <div class="pm"><div class="pmk">${t('pm_vent')}</div><div class="pmv">${ventMap[s.vent]||s.vent}</div></div>
+      <div class="pm"><div class="pmk">${t('pm_calcs')}</div><div class="pmv">${calcs.length}</div></div>
+    </div></div></div>
+  ${s.rooms?.length?`<div class="stitle">${t('rooms_title')}</div>
+  <div style="background:var(--card);border:1px solid var(--border);border-radius:13px;overflow:hidden;margin-bottom:16px;">
+  <table class="rtable"><thead><tr><th>${t('th_room')}</th><th>${t('th_result')}</th><th>${t('th_status')}</th></tr></thead>
+  <tbody>${s.rooms.map(r=>`<tr><td><strong>${r.name}</strong></td><td style="font-family:'Unbounded',sans-serif;font-weight:700;color:${r.badge==='danger'?'var(--danger)':r.badge==='warn'?'var(--warn)':'var(--ok)'};">${r.avg?.toLocaleString('ru')}</td><td>${vBadge(r.avg)}</td></tr>`).join('')}</tbody></table></div>`:''}
+  ${calcs.length?`<div class="stitle">${t('calcs_title')} (${calcs.length})</div>
+  <div style="background:var(--card);border:1px solid var(--border);border-radius:13px;overflow:hidden;">
+  <table class="rtable"><thead><tr><th>${t('th_room')}</th><th>${t('th_result')}</th><th>${t('th_status')}</th></tr></thead>
+  <tbody>${calcs.slice(0,10).map(c=>`<tr><td>${c.room||'—'}</td><td style="font-family:'Unbounded',sans-serif;font-weight:700;">${c.value?.toLocaleString('ru')}</td><td>${vBadge(c.value)}</td></tr>`).join('')}</tbody></table></div>`:''}`;
+}
+
+// ── CALCULATOR ──
+async function renderCalcSelect(){
+  const snap=await getDocs(collection(db,'schools'));
+  const sel=document.getElementById('calcSchool');
+  sel.innerHTML=snap.docs.map(d=>`<option value="${d.id}">${d.data().name}</option>`).join('')||'<option>—</option>';
+}
+window.upAvg=function(){
+  const vals=[document.getElementById('c1').value,document.getElementById('c2').value,document.getElementById('c3').value].map(Number).filter(v=>!isNaN(v)&&v>=0);
+  document.getElementById('avgD').value=vals.length?(vals.reduce((a,b)=>a+b,0)/vals.length).toFixed(2):'';
+};
+window.doCalc=function(){
+  const a=parseFloat(document.getElementById('avgD').value);
+  const S=parseFloat(document.getElementById('sA').value)||78.5;
+  const T=parseFloat(document.getElementById('tT').value)||5;
+  if(isNaN(a)||a<0){toast(lang==='de'?'Koloniendaten eingeben':lang==='en'?'Enter colony data':'Введите данные по колониям','error');return;}
+  const X=Math.round((a*100*5*100)/(S*T));
+  lastCalc={value:X,room:document.getElementById('calcRoom').value||'—',schoolId:document.getElementById('calcSchool').value,a,S,T,season,date:new Date().toISOString()};
+  const rb=document.getElementById('rbox');rb.style.display='block';
+  document.getElementById('rVal').textContent=X.toLocaleString('ru');
+  const v=getVerdict(X);
+  document.getElementById('rVerdict').textContent=v.text;
+  document.getElementById('rVerdict').style.cssText=v.css;
+  document.getElementById('rComp').textContent=v.hint;
+};
+window.saveCalc=async function(){
+  if(!lastCalc){toast(lang==='de'?'Zuerst berechnen':lang==='en'?'Calculate first':'Сначала рассчитайте','error');return;}
+  lov(true,t('lov_saving'));
+  const sSnap=await getDoc(doc(db,'schools',lastCalc.schoolId));
+  const sName=sSnap.exists()?sSnap.data().name:'—';
+  await addDoc(collection(db,'calculations'),{...lastCalc,schoolName:sName,userId:CU.uid,userName:CD?.name||'—',date:serverTimestamp()});
+  lov(false);toast(lang==='de'?'Gespeichert ✓':lang==='en'?'Saved ✓':'Сохранено ✓','success');
+  renderCalcHist();renderDash();
+};
+window.clearCalc=function(){
+  ['c1','c2','c3'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('calcRoom').value='';document.getElementById('avgD').value='';
+  document.getElementById('rbox').style.display='none';lastCalc=null;
+};
+async function renderCalcHist(){
+  const snap=await getDocs(query(collection(db,'calculations'),orderBy('date','desc'),limit(8)));
+  const c=document.getElementById('calcHist');
+  if(snap.empty){c.innerHTML=`<div style="color:var(--muted);font-size:12px;text-align:center;padding:14px;">${t('hist_empty_txt')}</div>`;return;}
+  c.innerHTML=snap.docs.map(d=>{const r=d.data();return`<div class="hitem"><div style="font-size:12px;font-weight:600;margin-bottom:2px;">${r.room||'—'} · ${r.schoolName||'—'}</div><div style="font-family:'Unbounded',sans-serif;font-size:13px;font-weight:700;color:${r.value>getNorm()?'var(--danger)':'var(--ok)'};">${r.value?.toLocaleString('ru')} / м³</div></div>`;}).join('');
+}
+
+// ── HISTORY ──
+async function renderHistory(){
+  const snap=await getDocs(query(collection(db,'calculations'),orderBy('date','desc')));
+  const c=document.getElementById('histFull');
+  if(snap.empty){c.innerHTML=`<div class="empty">📈<br><br>${t('hist_empty')}</div>`;return;}
+  const calcs=snap.docs.map(d=>d.data());
+  c.innerHTML=`<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+    <div style="color:var(--muted);font-size:13px;">${t('hist_total')} <strong style="color:var(--text)">${calcs.length}</strong></div>
+    ${CD?.role==='owner'?`<button class="bsm danger" onclick="clearAllCalcs()">🗑 ${t('hist_clear')}</button>`:''}
+  </div>
+  <div style="background:var(--card);border:1px solid var(--border);border-radius:13px;overflow:hidden;">
+  <table class="rtable" style="width:100%;"><thead><tr>
+    <th>${t('th_room')}</th><th>${t('th_school')}</th><th>${t('th_result')}</th><th>${t('th_status')}</th>
+  </tr></thead><tbody>
+  ${calcs.map(c=>`<tr><td><strong>${c.room||'—'}</strong></td><td style="color:var(--muted)">${c.schoolName||'—'}</td><td style="font-family:'Unbounded',sans-serif;font-weight:700;color:${c.value>getNorm()?'var(--danger)':'var(--ok)'};">${c.value?.toLocaleString('ru')}</td><td>${vBadge(c.value)}</td></tr>`).join('')}
+  </tbody></table></div>`;
+}
+window.clearAllCalcs=async function(){
+  if(!confirm(lang==='de'?'Gesamten Verlauf löschen?':lang==='en'?'Clear all history?':'Очистить всю историю?'))return;
+  lov(true);const snap=await getDocs(collection(db,'calculations'));
+  await Promise.all(snap.docs.map(d=>deleteDoc(d.ref)));
+  lov(false);renderHistory();renderDash();toast(t('hist_clear').replace('🗑 ',''),'info');
+};
+
+// ── SCIENTISTS ──
+function renderScientists(){
+  const data=[
+    {i:'РК',c:'linear-gradient(135deg,#1a5c3a,#2a9d6a)',n:'Роберт Кох',ny:'Robert Koch',nd:'Robert Koch',y:'1843–1910',sp:{ru:'Бактериология',en:'Bacteriology',de:'Bakteriologie'},sc:'var(--ok)',
+      desc:{ru:'Немецкий врач и микробиолог, основоположник бактериологии. Нобелевский лауреат 1905 года.',en:'German physician and microbiologist, founder of bacteriology. Nobel Prize 1905.',de:'Deutscher Arzt und Mikrobiologe, Begründer der Bakteriologie. Nobelpreis 1905.'},
+      contribs:{ru:['Разработал метод Коха для анализа воздуха','Открыл возбудителей туберкулёза и холеры','Ввёл использование чашек Петри'],en:['Developed Koch method for air analysis','Discovered tuberculosis and cholera pathogens','Introduced Petri dish usage'],de:['Entwickelte die Koch-Methode zur Luftanalyse','Entdeckte Tuberkulose- und Cholera-Erreger','Einführung der Petrischale']},
+      q:{ru:'«Настанет день, когда туберкулёз будет побеждён.»',en:'"The day will come when tuberculosis will be conquered."',de:'"Der Tag wird kommen, an dem Tuberkulose besiegt wird."'},bg:'🔬'},
+    {i:'ВО',c:'linear-gradient(135deg,#1a3a5c,#2a6ab5)',n:'Василий Омелянский',ny:'Vasily Omelyansky',nd:'Wassilij Omeljanski',y:'1867–1928',sp:{ru:'Экологическая микробиология',en:'Environmental microbiology',de:'Ökologische Mikrobiologie'},sc:'var(--accent)',
+      desc:{ru:'Русский микробиолог, основоположник экологической микробиологии. Разработал формулу расчёта микробного числа воздуха.',en:'Russian microbiologist, founder of environmental microbiology. Developed the formula for calculating airborne microbial counts.',de:'Russischer Mikrobiologe, Begründer der Umweltmikrobiologie. Entwickelte die Formel zur Berechnung der Keimzahl in der Luft.'},
+      contribs:{ru:['Формула расчёта микроорганизмов в воздухе','Обосновал связь загрязнённости воздуха и здоровья','Написал классическое руководство по микробиологии'],en:['Formula for calculating microorganisms in air','Justified link between air pollution and health','Wrote classic microbiology textbook'],de:['Formel zur Berechnung von Mikroorganismen in der Luft','Begründete Zusammenhang zwischen Luftverschmutzung und Gesundheit','Schrieb klassisches Mikrobiologie-Lehrbuch']},
+      q:{ru:'«Воздух помещений несёт отпечаток всех, кто в нём находится.»',en:'"Indoor air bears the imprint of everyone in it."',de:'"Die Raumluft trägt den Abdruck aller, die sich darin befinden."'},bg:'🧮'},
+    {i:'ГГ',c:'linear-gradient(135deg,#4a1a5c,#8a3ab5)',n:'Ганс Кристиан Грам',ny:'Hans Christian Gram',nd:'Hans Christian Gram',y:'1853–1938',sp:{ru:'Бактериология',en:'Bacteriology',de:'Bakteriologie'},sc:'var(--accent3)',
+      desc:{ru:'Датский бактериолог. В 1884 году разработал метод дифференциальной окраски бактерий.',en:'Danish bacteriologist. In 1884, developed the differential staining method for bacteria.',de:'Dänischer Bakteriologe. 1884 entwickelte er die Differentialfärbungsmethode für Bakterien.'},
+      contribs:{ru:['Метод окраски по Граму (1884)','Разделение бактерий на грам+ и грам−','Базовый метод клинической диагностики'],en:['Gram staining method (1884)','Division of bacteria into gram+ and gram−','Basic method of clinical diagnostics'],de:['Gram-Färbung (1884)','Einteilung der Bakterien in gram+ und gram−','Grundlegende Methode der klinischen Diagnostik']},
+      q:{ru:'«Несовершенное орудие лучше никакого.»',en:'"An imperfect tool is better than none."',de:'"Ein unvollkommenes Werkzeug ist besser als keins."'},bg:'🎨'},
+    {i:'ЛП',c:'linear-gradient(135deg,#5c3a1a,#b5722a)',n:'Луи Пастер',ny:'Louis Pasteur',nd:'Louis Pasteur',y:'1822–1895',sp:{ru:'Микробиология · Иммунология',en:'Microbiology · Immunology',de:'Mikrobiologie · Immunologie'},sc:'var(--warn)',
+      desc:{ru:'Французский химик, основоположник микробиологии. Изобрёл пастеризацию и создал первые вакцины.',en:'French chemist, founder of microbiology. Invented pasteurization and created the first vaccines.',de:'Französischer Chemiker, Begründer der Mikrobiologie. Erfand die Pasteurisierung und entwickelte erste Impfstoffe.'},
+      contribs:{ru:['Опроверг теорию самозарождения','Разработал пастеризацию','Создал вакцину от бешенства (1885)'],en:['Disproved spontaneous generation','Developed pasteurization','Created rabies vaccine (1885)'],de:['Widerlegte die Urzeugungstheorie','Entwickelte die Pasteurisierung','Entwickelte Tollwutimpfstoff (1885)']},
+      q:{ru:'«Случай помогает только подготовленному уму.»',en:'"Chance favors only the prepared mind."',de:'"Der Zufall begünstigt nur den vorbereiteten Geist."'},bg:'🧪'},
+    {i:'ЮП',c:'linear-gradient(135deg,#1a4a2a,#2e8b57)',n:'Юлий Петри',ny:'Julius Petri',nd:'Julius Petri',y:'1852–1921',sp:{ru:'Лабораторная техника',en:'Laboratory technique',de:'Labortechnik'},sc:'var(--accent2)',
+      desc:{ru:'Немецкий бактериолог. В 1887 году изобрёл чашку Петри — революционный инструмент микробиологии.',en:'German bacteriologist. In 1887, invented the Petri dish — a revolutionary tool in microbiology.',de:'Deutscher Bakteriologe. Erfand 1887 die Petrischale — ein revolutionäres Instrument der Mikrobiologie.'},
+      contribs:{ru:['Изобрёл чашку Петри (1887)','Позволил культивировать микроорганизмы','Используется в данном исследовании'],en:['Invented the Petri dish (1887)','Enabled cultivation of microorganisms','Used in this research'],de:['Erfand die Petrischale (1887)','Ermöglichte die Kultivierung von Mikroorganismen','In dieser Forschung verwendet']},
+      q:{ru:'«Лучшие изобретения те, без которых уже не представить науку.»',en:'"The best inventions are those science cannot imagine without."',de:'"Die besten Erfindungen sind jene, ohne die die Wissenschaft nicht mehr auskommt."'},bg:'🫙'}
+  ];
+  const grid=document.getElementById('sciGrid');if(!grid)return;
+  const sciContrib=t('sci_contrib');
+  grid.innerHTML=data.map(s=>`
+    <div class="scicard">
+      <div class="scihd" style="background:${s.c}22;">
+        <div class="scibg">${s.bg}</div>
+        <div class="sciav" style="background:${s.c};">${s.i}</div>
+        <div class="scin">${lang==='en'?s.ny:lang==='de'?s.nd:s.n}</div>
+        <div class="sciy">${s.y}</div>
+        <div class="scisp" style="color:${s.sc}">${s.sp[lang]||s.sp.ru}</div>
+      </div>
+      <div class="scibod">
+        <p class="scidesc">${s.desc[lang]||s.desc.ru}</p>
+        <div class="scicb"><div class="scict">${sciContrib}</div>${(s.contribs[lang]||s.contribs.ru).map(c=>`<div class="scici">${c}</div>`).join('')}</div>
+        <div class="sciq">"${(s.q[lang]||s.q.ru).replace(/[«»"]/g,'')}"</div>
+      </div>
+    </div>`).join('');
+}
+
+// ── ACCOUNT ──
+async function renderAccount(){
+  const n=CD?.name||CU.displayName||'User';
+  const roleMap={researcher:t('role_researcher'),teacher:t('role_teacher'),student:t('role_student'),admin:t('role_admin'),owner:t('role_owner')};
+  document.getElementById('accAv').textContent=n[0].toUpperCase();
+  document.getElementById('accName').textContent=n;
+  document.getElementById('accEmail').textContent=CU.email;
+  document.getElementById('accRoleChip').textContent='👤 '+(roleMap[CD?.role]||'—');
+  document.getElementById('accEditName').value=n;
+  document.getElementById('accEditRole').value=CD?.role||'researcher';
+  const [sc,ca]=await Promise.all([getDocs(collection(db,'schools')),getDocs(collection(db,'calculations'))]);
+  document.getElementById('as1').textContent=sc.size;
+  document.getElementById('as2').textContent=ca.size;
+  const created=CD?.created?.toDate?.()||new Date();
+  document.getElementById('as3').textContent=Math.max(0,Math.floor((Date.now()-created.getTime())/(1000*60*60*24)));
+}
+window.saveProfile=async function(){
+  const name=document.getElementById('accEditName').value.trim();
+  const role=document.getElementById('accEditRole').value;
+  if(!name){toast(lang==='de'?'Name eingeben':lang==='en'?'Enter name':'Введите имя','error');return;}
+  lov(true,t('lov_saving'));
+  await updateDoc(doc(db,'users',CU.uid),{name,role});
+  await updateProfile(CU,{displayName:name});
+  CD.name=name;CD.role=role;
+  document.getElementById('sbName').textContent=name;
+  document.getElementById('sbAv').textContent=name[0].toUpperCase();
+  lov(false);toast(lang==='de'?'Gespeichert ✓':lang==='en'?'Saved ✓':'Сохранено ✓','success');
+  renderAccount();
+};
+
+// ── OWNER PANEL ──
+async function renderOwnerPanel(){
+  if(CD?.role!=='owner'){toast(lang==='de'?'Zugriff verweigert':lang==='en'?'Access denied':'Доступ запрещён','error');showPage('dashboard');return;}
+  const [us,sc,ca]=await Promise.all([getDocs(collection(db,'users')),getDocs(collection(db,'schools')),getDocs(collection(db,'calculations'))]);
+  document.getElementById('op1').textContent=us.size;
+  document.getElementById('op2').textContent=sc.size;
+  document.getElementById('op3').textContent=ca.size;
+  const roleMap={researcher:t('role_researcher'),teacher:t('role_teacher'),student:t('role_student'),admin:t('role_admin'),owner:'⚡ OWNER'};
+  const users=us.docs.map(d=>d.data());
+  document.getElementById('ownerUsers').innerHTML=users.length===0?`<div style="color:var(--muted);">${lang==='de'?'Keine Benutzer':lang==='en'?'No users':'Нет пользователей'}</div>`:`
+    <table style="width:100%;border-collapse:collapse;font-size:12px;">
+    <tr style="color:var(--muted);font-size:10px;letter-spacing:.07em;text-transform:uppercase;border-bottom:1px solid var(--border);">
+      <th style="padding:8px 12px;text-align:left;">${t('op_th_name')}</th><th style="padding:8px 12px;text-align:left;">${t('op_th_email')}</th><th style="padding:8px 12px;text-align:center;">${t('op_th_role')}</th><th style="padding:8px 12px;text-align:center;">${t('op_th_action')}</th>
+    </tr>
+    ${users.map(u=>`<tr style="border-bottom:1px solid rgba(255,255,255,.04);">
+      <td style="padding:9px 12px;font-weight:600;">${u.name||'—'}</td>
+      <td style="padding:9px 12px;color:var(--muted);font-size:11px;">${u.email||'—'}</td>
+      <td style="padding:9px 12px;text-align:center;">
+        <select onchange="ownerRole('${u.uid}',this.value)" style="background:var(--bg2);border:1px solid var(--border);border-radius:5px;padding:3px 7px;color:var(--text);font-size:11px;cursor:pointer;">
+          ${['student','teacher','researcher','admin'].map(r=>`<option value="${r}" ${u.role===r?'selected':''}>${roleMap[r]||r}</option>`).join('')}
+        </select>
+      </td>
+      <td style="padding:9px 12px;text-align:center;"><button class="bsm danger" style="padding:3px 8px;font-size:10px;" onclick="ownerDelUser('${u.uid}')">Del</button></td>
+    </tr>`).join('')}
+    </table>`;
+}
+window.ownerRole=async function(uid,role){await updateDoc(doc(db,'users',uid),{role});toast(lang==='de'?'Rolle geändert':lang==='en'?'Role changed':'Роль изменена','success');};
+window.ownerDelUser=async function(uid){
+  if(!confirm(lang==='de'?'Benutzer löschen?':lang==='en'?'Delete user?':'Удалить пользователя?'))return;
+  await deleteDoc(doc(db,'users',uid));renderOwnerPanel();toast(lang==='de'?'Gelöscht':lang==='en'?'Deleted':'Удалён','info');
+};
+window.ownerDelCalcs=async function(){
+  if(!confirm(lang==='de'?'Alle Berechnungen löschen?':lang==='en'?'Delete all calculations?':'Удалить все расчёты?'))return;
+  lov(true);const snap=await getDocs(collection(db,'calculations'));
+  await Promise.all(snap.docs.map(d=>deleteDoc(d.ref)));
+  lov(false);renderOwnerPanel();toast(t('hist_clear').replace('🗑 ',''),'info');
+};
+window.ownerResetSchools=async function(){
+  if(!confirm(lang==='de'?'Alle Schulen außer Nr. 210 löschen?':lang==='en'?'Delete all schools except No. 210?':'Сбросить школы (кроме №210)?'))return;
+  lov(true);const snap=await getDocs(collection(db,'schools'));
+  await Promise.all(snap.docs.filter(d=>d.id!=='school_210').map(d=>deleteDoc(d.ref)));
+  lov(false);renderSchools();renderOwnerPanel();toast(lang==='de'?'Zurückgesetzt':lang==='en'?'Reset':'Сброшено','info');
+};
+
+// ── PAGE NAVIGATION ──
+window.showPage=async function(name){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('on'));
+  document.querySelectorAll('.ni').forEach(n=>n.classList.remove('on'));
+  const pg=document.getElementById('page-'+name);if(pg)pg.classList.add('on');
+  const ni=document.querySelector(`[data-p="${name}"]`);if(ni)ni.classList.add('on');
+  document.getElementById('tbTitle').textContent=t('pg_'+name)||name;
+  const act=document.getElementById('tbAct');
+  act.innerHTML=name==='schools'?`<button class="bsm primary" onclick="openAddSchool()">${t('add_school')}</button>`:'';
+  if(name==='history')await renderHistory();
+  if(name==='account')await renderAccount();
+  if(name==='ownerpanel')await renderOwnerPanel();
+  if(name==='profile')await renderProfile();
+  if(name==='calculator'){await renderCalcSelect();renderCalcHist();}
+  document.getElementById('pbar').style.width='100%';
+  setTimeout(()=>document.getElementById('pbar').style.width='0%',600);
+  // re-apply lang for dynamic content
+  applyLang();
+};
+window.scNav=function(amt){const n=document.getElementById('sbNav');if(n)n.scrollBy({top:amt,behavior:'smooth'});};
+
+// ── MODAL ──
+window.openM=function(id){document.getElementById(id).classList.add('on');};
+window.closeM=function(id){document.getElementById(id).classList.remove('on');};
+document.querySelectorAll('.moverlay').forEach(m=>m.addEventListener('click',function(e){if(e.target===this)closeM(this.id);}));
+document.addEventListener('keydown',e=>{if(e.key==='Escape')document.querySelectorAll('.moverlay.on').forEach(m=>m.classList.remove('on'));});
+
+</script>
+</body>
+</html>
