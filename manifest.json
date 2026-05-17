@@ -1,0 +1,50 @@
+{
+  "name": "MicroAir Lab",
+  "short_name": "MicroAir",
+  "description": "Система микробиологического анализа воздуха в школах",
+  "start_url": "/Micro.Air_Lab/",
+  "scope": "/Micro.Air_Lab/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#060b16",
+  "theme_color": "#3b9eff",
+  "lang": "ru",
+  "categories": ["education", "science", "health"],
+  "icons": [
+    {
+      "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'><rect width='192' height='192' rx='32' fill='%233b9eff'/><text y='140' x='28' font-size='120'>🧫</text></svg>",
+      "sizes": "192x192",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'><rect width='512' height='512' rx='80' fill='%233b9eff'/><text y='380' x='60' font-size='320'>🧫</text></svg>",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "screenshot.png",
+      "sizes": "1280x720",
+      "type": "image/png",
+      "form_factor": "wide",
+      "label": "MicroAir Lab Dashboard"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Калькулятор",
+      "short_name": "Calc",
+      "url": "/Micro.Air_Lab/#calculator",
+      "description": "Калькулятор Омелянского"
+    },
+    {
+      "name": "История",
+      "short_name": "History",
+      "url": "/Micro.Air_Lab/#history",
+      "description": "История расчётов"
+    }
+  ]
+}
